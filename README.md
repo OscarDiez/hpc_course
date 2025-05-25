@@ -1,6 +1,6 @@
-# HPC Course
+# HPC 
 
-Support and exercise files for the **HPC Course**, designed to help students learn and practice high-performance computing concepts. Exercises are provided to be run in an HPC cluster, and some can also be executed in Google Colab.
+Support and exercise files for **HPC**, including the books and the course designed to help you learn and practice high-performance computing concepts. Exercises are provided to be run in an HPC cluster, and some can also be executed in Google Colab.
 
 ## Structure of the Repository
 
