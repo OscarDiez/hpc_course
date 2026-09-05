@@ -6,6 +6,16 @@ Support and exercise files for **HPC**, including the books and the course desig
 
 - **Assignments**: Practical assignments for each module of the course.
 - **Chapter Examples**: Example notebooks to help you practice the concepts covered in the lessons.
+- **Cluster guide**: Reusable SciTech HPC cluster access and Slurm instructions.
+- **Session demos**: Small reproducible examples used during live sessions.
+
+---
+
+## SciTech HPC cluster
+
+[Reusable cluster access guide](cluster/README.md)
+
+[Session 9 GPU demo](session_demos/09_gpu/README.md)
 
 ---
 
