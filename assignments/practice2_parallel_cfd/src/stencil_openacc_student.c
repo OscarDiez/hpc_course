@@ -31,12 +31,14 @@ int main(int argc,char **argv){
     /* TODO OPENACC DATA REGION
        Add an OpenACC data region around the repeated timestep loop so that
        current and next do not have to be transferred host<->device every step.
-       Hint: both arrays are needed on the device and the final current values
-       must be available on the host after the loop.
+       Hint: both arrays are needed on the device and their final contents must
+       be available on the host after the data region ends.
     */
 
     for(int s=0;s<steps;s++){
-        memset(next,0,sz*sizeof(double));
+        /* Both arrays start with zero-valued boundaries and only interior
+           elements are updated, so the boundary values remain zero without a
+           host-side memset inside the persistent accelerator data region. */
 
         /* TODO OPENACC PARALLEL LOOP
            Add the directive that offloads/parallelizes the two nested loops.
