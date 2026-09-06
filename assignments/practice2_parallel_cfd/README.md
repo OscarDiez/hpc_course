@@ -62,9 +62,13 @@ module purge
 module load foss/2023b
 ```
 
-This avoids mixing the EESSI compatibility compiler with the system OpenMPI installation. The MPI launches also use the tested OpenMPI TCP/vader path to avoid confusing UCX warnings.
+This avoids mixing the EESSI compatibility compiler with the system OpenMPI installation.
 
-For the small MPI demo use:
+SciTech compute nodes currently do not expose the `srun`/`scontrol` client commands required by OpenMPI's normal Slurm launcher. For a robust student workflow, the supplied MPI and hybrid jobs therefore run on **one allocated compute node** and explicitly exclude OpenMPI's Slurm process launcher. MPI still uses separate processes with separate address spaces and real message passing/halo exchange; the exercise therefore demonstrates the MPI programming model correctly without depending on unfinished site launcher integration.
+
+The jobs also use the tested OpenMPI TCP/vader communication path to avoid confusing UCX warnings.
+
+For the small deterministic MPI demo use:
 
 ```bash
 bash run_mpi_demo.sh
@@ -90,13 +94,13 @@ CPU/OpenMP:
 JOB_CPU=$(sbatch --parsable jobs/p2_cpu.sbatch | cut -d';' -f1)
 ```
 
-MPI (4 ranks, 2 nodes):
+MPI (4 MPI ranks on one allocated compute node):
 
 ```bash
 JOB_MPI=$(sbatch --parsable jobs/p2_mpi.sbatch | cut -d';' -f1)
 ```
 
-Hybrid MPI + OpenMP:
+Hybrid MPI + OpenMP (2 MPI ranks × 4 OpenMP threads on one allocated compute node):
 
 ```bash
 JOB_HYBRID=$(sbatch --parsable jobs/p2_hybrid.sbatch | cut -d';' -f1)
