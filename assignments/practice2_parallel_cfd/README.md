@@ -25,16 +25,7 @@ src/stencil_hybrid.c
 
 The `_student` files contain small TODO sections. Complete only those sections requested in the Blackboard assignment.
 
-## Build targets
-
-```bash
-make serial
-make openmp
-make mpi
-make openacc
-make cuda
-make hybrid
-```
+## Reference result
 
 Start with:
 
@@ -51,49 +42,51 @@ CHECKSUM=100.000000
 NONZERO=25
 ```
 
-The parallel implementations should reproduce these numerical values.
+All correct implementations should reproduce these numerical values.
 
-## SciTech CPU/MPI environment
+## Validated SciTech CPU workflow
 
-For MPI and hybrid jobs the scripts start from a clean module environment and load the tested SciTech CPU-HPC stack:
+The supplied Slurm scripts use a clean SciTech `foss/2023b` environment so that student jobs do not depend on modules inherited from the login shell.
 
-```bash
-module purge
-module load foss/2023b
-```
-
-This avoids mixing the EESSI compatibility compiler with the system OpenMPI installation.
-
-SciTech compute nodes currently do not expose the `srun`/`scontrol` client commands required by OpenMPI's normal Slurm launcher. For a robust student workflow, the supplied MPI and hybrid jobs therefore run on **one allocated compute node** and explicitly exclude OpenMPI's Slurm process launcher. MPI still uses separate processes with separate address spaces and real message passing/halo exchange, so the exercise demonstrates the MPI programming model correctly without depending on unfinished site launcher integration.
-
-The jobs also use the tested OpenMPI TCP/vader communication path to avoid confusing UCX warnings.
-
-For the small deterministic MPI demo use:
+The validated CPU jobs are:
 
 ```bash
-bash run_mpi_demo.sh
+JOB_CPU=$(sbatch --parsable jobs/p2_cpu.sbatch | cut -d';' -f1)
+JOB_MPI=$(sbatch --parsable jobs/p2_mpi.sbatch | cut -d';' -f1)
+JOB_HYBRID=$(sbatch --parsable jobs/p2_hybrid.sbatch | cut -d';' -f1)
 ```
 
-## Accelerator route
+Current SciTech compute nodes do not expose the `srun` client command needed by OpenMPI's normal Slurm launcher. For a robust course workflow, the supplied MPI and hybrid jobs therefore run inside one allocated compute node and explicitly exclude OpenMPI's Slurm launcher.
 
-GPU allocation is available on SciTech and `nvidia-smi` sees the NVIDIA RTX 6000 GPU.
+MPI still uses separate processes, separate address spaces and real halo-message exchange, so the MPI programming model is demonstrated correctly.
 
-The supplied GPU batch script automatically chooses the first working CUDA route:
+The validated reference configurations are:
 
-1. **native `nvcc`**, if the cluster accelerator modules provide it;
-2. otherwise the centrally shared Apptainer image:
+```text
+MPI:      4 ranks
+Hybrid:   2 MPI ranks x 4 OpenMP threads
+```
+
+## CUDA accelerator route
+
+GPU allocation works on SciTech.
+
+The supplied GPU job automatically tries:
+
+1. native `nvcc`, if available;
+2. otherwise the shared course Apptainer image:
 
 ```text
 /data/software/containers/hpc-course-cuda.sif
 ```
 
-The student command is therefore the same in either case:
+Students therefore use one command:
 
 ```bash
 JOB_GPU=$(sbatch --parsable jobs/p2_gpu.sbatch | cut -d';' -f1)
 ```
 
-The output reports either:
+The output reports the route used:
 
 ```text
 GPU_TOOLCHAIN_ROUTE=NATIVE_NVCC
@@ -105,44 +98,31 @@ or:
 GPU_TOOLCHAIN_ROUTE=APPTAINER_SHARED
 ```
 
-Students must **not** download their own multi-GB CUDA container image.
+The shared Apptainer CUDA route has been validated on the SciTech RTX 6000 Ada GPU with CUDA 12.8.
 
-If neither native CUDA nor the shared image is available, the GPU job reports the infrastructure limitation explicitly. A course fallback environment may then be used as described in Blackboard.
+Students must not download their own CUDA container image.
 
-### OpenACC
+## OpenACC status
 
-At the latest validation, NVIDIA HPC SDK (`nvc`, `nvc++`, `nvfortran`) was not yet available. Students should complete the OpenACC directives in the source code. GPU execution is required only if an OpenACC-capable accelerator environment is announced before the practice.
+At the latest release validation, NVIDIA HPC SDK (`nvc`, `nvc++`, `nvfortran`) was not yet available and the installed GCC OpenACC runtime could not execute the accelerator program correctly.
 
-## Slurm experiments
+For the published assignment, OpenACC is therefore a **code and concept task only** unless the instructor announces that an OpenACC-capable environment has become available.
 
-CPU/OpenMP:
+Students should complete the requested OpenACC directives and understand the role of the data region and parallel loop. They should not attempt to install their own compiler or container.
 
-```bash
-JOB_CPU=$(sbatch --parsable jobs/p2_cpu.sbatch | cut -d';' -f1)
-```
-
-MPI (4 MPI ranks on one allocated compute node):
-
-```bash
-JOB_MPI=$(sbatch --parsable jobs/p2_mpi.sbatch | cut -d';' -f1)
-```
-
-Hybrid MPI + OpenMP (2 MPI ranks × 4 OpenMP threads on one allocated compute node):
-
-```bash
-JOB_HYBRID=$(sbatch --parsable jobs/p2_hybrid.sbatch | cut -d';' -f1)
-```
-
-CUDA/GPU:
-
-```bash
-JOB_GPU=$(sbatch --parsable jobs/p2_gpu.sbatch | cut -d';' -f1)
-```
-
-Monitor with:
+## Monitor jobs
 
 ```bash
 squeue -u $USER
+```
+
+Inspect output after completion, for example:
+
+```bash
+cat p2_cpu_${JOB_CPU}.out
+cat p2_mpi_${JOB_MPI}.out
+cat p2_hybrid_${JOB_HYBRID}.out
+cat p2_gpu_${JOB_GPU}.out
 ```
 
 ## Evidence
@@ -153,7 +133,7 @@ If CUDA ran as a SciTech Slurm job:
 bash make_evidence.sh "$JOB_CPU" "$JOB_MPI" "$JOB_HYBRID" "$JOB_GPU"
 ```
 
-If the CUDA part had to use a non-Slurm course fallback:
+If a non-Slurm accelerator fallback is announced instead:
 
 ```bash
 bash make_evidence.sh "$JOB_CPU" "$JOB_MPI" "$JOB_HYBRID" NO_SLURM_GPU
@@ -165,6 +145,4 @@ Then inspect:
 cat p2_evidence.txt
 ```
 
-Using `bash` avoids relying on the executable permission bit of files created through the repository interface.
-
-Keep all `.out` files until the assessment has been graded.
+Keep all source files and `.out` files until the assessment has been graded.
