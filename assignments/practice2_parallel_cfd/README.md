@@ -53,13 +53,34 @@ NONZERO=25
 
 The parallel implementations should reproduce these numerical values.
 
-## SciTech environment
+## SciTech CPU/MPI environment
 
-CPU/OpenMP and MPI use the standard SciTech CPU environment. The supplied Slurm scripts load `foss/2023b` if needed.
+For MPI and hybrid jobs the scripts start from a clean module environment and load the tested SciTech CPU-HPC stack:
 
-CUDA requires `nvcc`. GPU allocation on SciTech is available, but the exact accelerated EESSI/CUDA activation command still needs to be confirmed by the cluster administrator. The GPU job detects a missing `nvcc` and reports `GPU_TOOLCHAIN_STATUS=NVCC_NOT_AVAILABLE` rather than failing silently.
+```bash
+module purge
+module load foss/2023b
+```
 
-OpenACC compilation is supported by the Makefile through `ACC_CC` and `ACCFLAGS`. By default it uses GCC with `-fopenacc`; actual NVIDIA GPU offload depends on the OpenACC-capable compiler environment provided on SciTech. Until that environment is confirmed, OpenACC can be used for the implementation/compiler exercise but GPU-offload results should not be assumed.
+This avoids mixing the EESSI compatibility compiler with the system OpenMPI installation. The MPI launches also use the tested OpenMPI TCP/vader path to avoid confusing UCX warnings.
+
+For the small MPI demo use:
+
+```bash
+bash run_mpi_demo.sh
+```
+
+## Accelerator status
+
+GPU allocation itself is available on SciTech and `nvidia-smi` sees the RTX 6000 Ada GPU.
+
+At the latest course validation, however:
+
+- `nvcc` was not available in the active module environment, so CUDA C/C++ compilation cannot yet be required on SciTech;
+- `nvc`/NVIDIA HPC SDK was not available;
+- GCC accepted `-fopenacc`, but NVIDIA OpenACC offload was not supported by the installed GCC runtime.
+
+Therefore CUDA/OpenACC GPU execution remains conditional on the cluster administrator providing/activating the accelerator toolchain. The source-code TODOs may still be used as implementation exercises, but GPU execution must not be treated as mandatory until the toolchain is confirmed.
 
 ## Slurm experiments
 
@@ -81,7 +102,7 @@ Hybrid MPI + OpenMP:
 JOB_HYBRID=$(sbatch --parsable jobs/p2_hybrid.sbatch | cut -d';' -f1)
 ```
 
-CUDA/GPU:
+CUDA/GPU (only when the CUDA toolchain is available):
 
 ```bash
 JOB_GPU=$(sbatch --parsable jobs/p2_gpu.sbatch | cut -d';' -f1)
@@ -95,11 +116,13 @@ squeue -u $USER
 
 ## Evidence
 
-After the four Slurm jobs finish:
+After the Slurm jobs finish, run the evidence generator explicitly through Bash:
 
 ```bash
-./make_evidence.sh "$JOB_CPU" "$JOB_MPI" "$JOB_HYBRID" "$JOB_GPU"
+bash make_evidence.sh "$JOB_CPU" "$JOB_MPI" "$JOB_HYBRID" "$JOB_GPU"
 cat p2_evidence.txt
 ```
+
+Using `bash` avoids relying on the executable permission bit of files created through the repository interface.
 
 Keep all `.out` files until the assessment has been graded.
