@@ -1,14 +1,11 @@
 #!/bin/bash
 set -euo pipefail
 
-if ! command -v mpicc >/dev/null 2>&1; then
-    module load foss/2023b
-fi
+module purge
+module load foss/2023b
 
 make mpi
 
-if [ -n "${SLURM_JOB_ID:-}" ]; then
-    srun -n 4 ./bin/stencil_mpi --demo
-else
-    mpirun -n 4 ./bin/stencil_mpi --demo
-fi
+mpirun -n 4 \
+  --mca pml ob1 --mca btl self,vader,tcp \
+  ./bin/stencil_mpi --demo
