@@ -10,9 +10,10 @@
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 
-if ! command -v gcc >/dev/null 2>&1; then
-    module load foss/2023b
-fi
+# Use the same validated SciTech CPU-HPC stack for every student,
+# regardless of modules inherited from the login shell.
+module purge
+module load foss/2023b
 
 make serial
 make openmp
