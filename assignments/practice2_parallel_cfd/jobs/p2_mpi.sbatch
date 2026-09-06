@@ -15,12 +15,13 @@ if ! command -v mpicc >/dev/null 2>&1; then
     module load foss/2023b
 fi
 
-make cpu
+make mpi
 
 echo "=== HPC PRACTICE 2 — MPI ==="
 echo "USER=$USER"
 echo "JOB_ID=$SLURM_JOB_ID"
 echo "NODELIST=$SLURM_JOB_NODELIST"
+echo "NODES_USED=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | paste -sd, -)"
 echo "PARTITION=$SLURM_JOB_PARTITION"
 echo "START_TIME=$(date -Is)"
 
