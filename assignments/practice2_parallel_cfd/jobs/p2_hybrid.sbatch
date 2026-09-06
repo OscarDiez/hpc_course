@@ -15,7 +15,7 @@ if ! command -v mpicc >/dev/null 2>&1; then
     module load foss/2023b
 fi
 
-make cpu
+make hybrid
 export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
 export OMP_PROC_BIND=spread
 export OMP_PLACES=cores
@@ -24,6 +24,7 @@ echo "=== HPC PRACTICE 2 — HYBRID MPI+OPENMP ==="
 echo "USER=$USER"
 echo "JOB_ID=$SLURM_JOB_ID"
 echo "NODELIST=$SLURM_JOB_NODELIST"
+echo "NODES_USED=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | paste -sd, -)"
 echo "MPI_RANKS=$SLURM_NTASKS"
 echo "OMP_THREADS_PER_RANK=$OMP_NUM_THREADS"
 echo "TOTAL_CPU_THREADS=$((SLURM_NTASKS * OMP_NUM_THREADS))"
