@@ -25,14 +25,13 @@ if ! command -v nvcc >/dev/null 2>&1; then
     exit 3
 fi
 
-mkdir -p bin
-nvcc -O3 src/stencil_gpu.cu -o bin/stencil_gpu
+make cuda
 
 echo "=== CUDA DEMO ==="
-./bin/stencil_gpu --demo
+./bin/stencil_cuda --demo
 
 echo "=== CUDA LARGE RUN ==="
-./bin/stencil_gpu --n 2048 --steps 200
+./bin/stencil_cuda --n 2048 --steps 200
 
 SIGNATURE=$(printf "%s|%s|%s|gpu\n" "$USER" "$SLURM_JOB_ID" "$(hostname)" | sha256sum | cut -c1-12)
 echo "RUN_SIGNATURE=$SIGNATURE"
