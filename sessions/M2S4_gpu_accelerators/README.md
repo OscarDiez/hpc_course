@@ -22,8 +22,8 @@ https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S4_gpu_ac
   - `--partition=gpu`
   - `--gpus=1`
 - The GPU job always runs `nvidia-smi`.
-- CUDA runs when `nvcc` is available.
-- OpenACC runs when NVIDIA HPC SDK `nvc` is available.
+- CUDA first tries native `nvcc`; otherwise it uses the validated shared Apptainer CUDA image at `/data/software/containers/hpc-course-cuda.sif` when available.
+- OpenACC runs only when NVIDIA HPC SDK `nvc` is available.
 - An optional CuPy check is included if the library is installed.
 
 ## Classroom activities
