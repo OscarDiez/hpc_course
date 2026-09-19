@@ -85,4 +85,10 @@ Current teaching notebooks are organized by **Module → Session** using the can
   - Raw URL for JupyterLab **File → Open from URL...**:
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S1_parallel_thinking/M2S1_parallel_thinking.ipynb`
 
+- **M2.S2 — Shared-memory computing with OpenMP**
+  - [Session folder](sessions/M2S2_openmp/)
+  - [Notebook](sessions/M2S2_openmp/M2S2_openmp.ipynb)
+  - Raw URL for JupyterLab **File → Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S2_openmp/M2S2_openmp.ipynb`
+
 > Legacy notebooks remain in `chapters_examples/` and `x_archive/`. New 2026 notebooks use `sessions/MxSy_topic/`.
