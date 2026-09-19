@@ -69,3 +69,20 @@ You can load the following notebooks directly from GitHub into JupyterHub by usi
 ### Contributions
 
 Feel free to contribute to the course materials by creating pull requests, adding additional exercises, or reporting issues.
+
+
+---
+
+## 2026 Interactive Session Notebooks
+
+Current teaching notebooks are organized by **Module → Session** using the canonical `MxSy` identifier.
+
+### Module 2
+
+- **M2.S1 — Parallel Thinking and Decomposition**
+  - [Session folder](sessions/M2S1_parallel_thinking/)
+  - [Notebook](sessions/M2S1_parallel_thinking/M2S1_parallel_thinking.ipynb)
+  - Raw URL for JupyterLab **File → Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S1_parallel_thinking/M2S1_parallel_thinking.ipynb`
+
+> Legacy notebooks remain in `chapters_examples/` and `x_archive/`. New 2026 notebooks use `sessions/MxSy_topic/`.
