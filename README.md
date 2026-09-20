@@ -77,6 +77,14 @@ Feel free to contribute to the course materials by creating pull requests, addin
 
 Current teaching notebooks are organized by **Module → Session** using the canonical `MxSy` identifier.
 
+### Module 1
+
+- **M1.S1 - Fundamentals of HPC: from serial code to a supercomputer**
+  - [Session folder](sessions/M1S1_fundamentals/)
+  - [Notebook](sessions/M1S1_fundamentals/M1S1_fundamentals.ipynb)
+  - Raw URL for JupyterLab **File -> Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M1S1_fundamentals/M1S1_fundamentals.ipynb`
+
 ### Module 2
 
 - **M2.S1 — Parallel Thinking and Decomposition**
