@@ -85,6 +85,12 @@ Current teaching notebooks are organized by **Module → Session** using the can
   - Raw URL for JupyterLab **File -> Open from URL...**:
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M1S1_fundamentals/M1S1_fundamentals.ipynb`
 
+- **M1.S2 - Evolution of supercomputing and the modern HPC landscape**
+  - [Session folder](sessions/M1S2_evolution_landscape/)
+  - [Notebook](sessions/M1S2_evolution_landscape/M1S2_evolution_landscape.ipynb)
+  - Raw URL for JupyterLab **File -> Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M1S2_evolution_landscape/M1S2_evolution_landscape.ipynb`
+
 ### Module 2
 
 - **M2.S1 — Parallel Thinking and Decomposition**
