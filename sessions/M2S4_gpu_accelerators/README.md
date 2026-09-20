@@ -1,6 +1,6 @@
-# M2.S4 — Introduction to GPU and Accelerator Computing
+# M2.S4 - Introduction to GPU and Accelerator Computing
 
-Interactive notebook for **M2.S4 — Introduction to GPU and Accelerator Computing**.
+Interactive notebook for **M2.S4 - Introduction to GPU and Accelerator Computing**.
 
 ## Open in IE/SciTech JupyterHub
 
@@ -22,8 +22,9 @@ https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S4_gpu_ac
   - `--partition=gpu`
   - `--gpus=1`
 - The GPU job always runs `nvidia-smi`.
-- CUDA first tries native `nvcc`; otherwise it uses the validated shared Apptainer CUDA image at `/data/software/containers/hpc-course-cuda.sif` when available.
-- OpenACC runs only when NVIDIA HPC SDK `nvc` is available.
+- CUDA tries, in order: native `nvcc`, `hpc-course-cuda/12.8.1`, `nvhpc/25.7`, then the shared Apptainer image at `/data/software/containers/hpc-course-cuda.sif`.
+- OpenACC tries native `nvc`, then `nvhpc/25.7`.
+- If no compiler route is exposed, the job prints diagnostics suitable for cluster-admin follow-up.
 - An optional CuPy check is included if the library is installed.
 
 ## Classroom activities

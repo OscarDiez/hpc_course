@@ -29,19 +29,26 @@ Questions for Francisco / cluster administration:
 
 ## GPU / accelerator
 
-Confirmed working:
+Confirmed working in the current M2.S4 validation:
 - Slurm `gpu` partition.
 - GPU allocation.
 - NVIDIA RTX 6000 Ada Generation visible with `nvidia-smi`.
-- Shared CUDA Apptainer image:
-  `/data/software/containers/hpc-course-cuda.sif`.
-- CUDA 12.8 path through the shared image has already been validated in Practice 2.
+- Job 19678 received 49140 MiB GPU memory and driver 580.126.09.
 
-Issues / limitations already observed:
-- native `nvcc` was not exposed in the default GPU job environment;
-- NVIDIA HPC SDK `nvc` was not exposed;
-- CuPy was not installed in the default Python environment;
-- OpenACC is currently treated as a code/concept exercise unless an accelerator-capable compiler environment is provided.
+Current issues / limitations observed in the Jupyter-submitted GPU batch job:
+- native `nvcc` is not exposed;
+- NVIDIA HPC SDK `nvc` is not exposed;
+- CuPy is not installed in the default Python environment;
+- the expected shared image path `/data/software/containers/hpc-course-cuda.sif` did not provide a usable route in the current job;
+- the previously documented Practice 2 CUDA container path should therefore be treated as historically validated, not assumed to be currently available from every GPU batch environment.
+
+The M2.S4 notebook now explicitly probes:
+- native `nvcc`;
+- `hpc-course-cuda/12.8.1` through a login shell;
+- `nvhpc/25.7` through a login shell;
+- the shared Apptainer image;
+- native and module-based `nvc`;
+- availability/readability diagnostics for the container and module environment.
 
 Questions for Francisco before relying on native GPU tooling:
 - Is native CUDA expected to be available through a supported module or system path?
