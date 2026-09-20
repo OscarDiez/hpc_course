@@ -37,3 +37,13 @@ Activities:
 - Local `mpirun`/`mpiexec` execution is used only when the environment permits it.
 - The multi-node Slurm script is generated but not submitted automatically.
 - Legacy MPI notebooks remain under `chapters_examples/` and `assignments/` for reference.
+
+## SciTech validation note - 20 September 2026
+
+The current robust classroom workflow is:
+
+- small MPI examples directly from Jupyter;
+- a real 4-rank MPI batch job on one CPU node;
+- a separate 2-node Slurm placement demonstration.
+
+A true 2-node MPI executable was not made the default because validation found an inconsistent MPI runtime environment between the Jupyter/batch/compute-node contexts. The cluster administrator should confirm the supported multi-node MPI stack before it is required from students.
