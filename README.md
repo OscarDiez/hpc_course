@@ -103,4 +103,10 @@ Current teaching notebooks are organized by **Module → Session** using the can
   - Raw URL for JupyterLab **File → Open from URL...**:
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S4_gpu_accelerators/M2S4_gpu_accelerators.ipynb`
 
+- **M2.S5 - Asynchronous Guided Lab: One Parallel Application**
+  - [Session folder](sessions/M2S5_async_parallel_app/)
+  - [Notebook](sessions/M2S5_async_parallel_app/M2S5_async_parallel_app.ipynb)
+  - Raw URL for JupyterLab **File -> Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S5_async_parallel_app/M2S5_async_parallel_app.ipynb`
+
 > Legacy notebooks remain in `chapters_examples/` and `x_archive/`. New 2026 notebooks use `sessions/MxSy_topic/`.
