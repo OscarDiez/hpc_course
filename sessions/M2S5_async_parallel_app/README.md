@@ -50,3 +50,8 @@ The GPU section is an extension so the syllabus core remains serial + OpenMP + M
 Use **Kernel -> Restart Kernel and Run All Cells**. The notebook creates source files and Slurm scripts progressively, so students should not jump directly to later submission cells.
 
 The notebook does not require Matplotlib. Visualizations use small inline SVG/HTML helpers so it works with the standard JupyterHub Python environment.
+
+
+## Performance-design note
+
+The validated v2 run worked end to end, but it exposed two avoidable sources of CPU overhead: clearing the whole output grid every timestep and creating a new OpenMP parallel region for every timestep. Build v3 removes the redundant clearing and keeps one persistent OpenMP team across the full simulation. This makes the serial/OpenMP/MPI/GPU comparison more representative and leaves memory bandwidth and synchronization as the main scaling effects students should interpret.
