@@ -103,6 +103,12 @@ Current teaching notebooks are organized by **Module → Session** using the can
   - Raw URL for JupyterLab **File -> Open from URL...**:
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M1S4_resource_management/M1S4_resource_management.ipynb`
 
+- **M1.S5 - Asynchronous Guided HPC Workflow**
+  - [Session folder](sessions/M1S5_async_hpc_workflow/)
+  - [Notebook](sessions/M1S5_async_hpc_workflow/M1S5_async_hpc_workflow.ipynb)
+  - Raw URL for JupyterLab **File -> Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M1S5_async_hpc_workflow/M1S5_async_hpc_workflow.ipynb`
+
 ### Module 2
 
 - **M2.S1 — Parallel Thinking and Decomposition**
