@@ -43,3 +43,10 @@ Validated Module 2 infrastructure:
 - multi-node MPI is not required by this notebook.
 
 The GPU section is an extension so the syllabus core remains serial + OpenMP + MPI.
+
+
+## Running the notebook
+
+Use **Kernel -> Restart Kernel and Run All Cells**. The notebook creates source files and Slurm scripts progressively, so students should not jump directly to later submission cells.
+
+The notebook does not require Matplotlib. Visualizations use small inline SVG/HTML helpers so it works with the standard JupyterHub Python environment.
