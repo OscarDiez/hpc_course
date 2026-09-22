@@ -32,11 +32,13 @@ sinfo -p gpu
 
 ## B. Request one GPU
 
-For the short classroom demo:
+For the short classroom demo from the normal login node:
 
 ```bash
-srun -p gpu --gpus=1 --pty bash
+srun -p gpu --gpus=1 --cpus-per-task=2 --mem=4G --time=00:10:00 --pty bash -l
 ```
+
+> If you are already inside JupyterHub, use the M2.S4 notebook's `sbatch` workflow instead of starting a nested interactive `srun` allocation.
 
 Check the allocated compute node and GPU:
 
@@ -64,36 +66,34 @@ git pull
 cd session_demos/09_gpu
 ```
 
-## D. CUDA compiler availability on the SciTech cluster
+## D. Enable CUDA and OpenACC on SciTech
 
-`nvidia-smi` confirms that a GPU and NVIDIA driver are available, but it does **not** mean that the CUDA compiler (`nvcc`) is available in the shell.
+The GPU allocation and NVIDIA HPC SDK route have now been validated on the SciTech cluster.
 
-As tested on 5 September 2026, the GPU allocation works, but `nvcc` is not in the default PATH and the normal module tree does not expose CUDA:
-
-```bash
-which nvcc
-module avail 2>&1 | grep -Ei 'cuda|nvhpc|nvidia'
-```
-
-SciTech has indicated that CUDA, cuDNN, NCCL and CUDA-Samples are available through an accelerated EESSI module tree that is not enabled by default. The exact site command still needs to be confirmed/enabled by SciTech before students are asked to compile CUDA on the cluster.
-
-Instructor diagnostics:
+Inside the allocated GPU shell:
 
 ```bash
-module spider CUDA-Samples
-module spider CUDA
+module purge
+module load nvhpc/25.7
 ```
 
-If SciTech exposes the accelerated module tree, load the CUDA/CUDA-Samples module they provide and verify:
+Verify CUDA:
 
 ```bash
 which nvcc
 nvcc --version
 ```
 
-Until that is enabled, use the cluster for the **Slurm + GPU allocation + `nvidia-smi`** demonstration, and run the CUDA code in the course notebook/Colab environment instead.
+Verify the NVIDIA C/OpenACC compiler:
 
-## E. Demo 1 — Vector addition (once `nvcc` is enabled)
+```bash
+which nvc
+nvc --version
+```
+
+The validated environment provides CUDA 12.9 through `nvcc` and OpenACC through `nvc`.
+
+## E. Demo 1 — Vector addition
 
 Compile:
 
@@ -115,7 +115,7 @@ The program adds two vectors with 1024 elements using:
 
 Think before running: **Why are 4 blocks enough?**
 
-## F. Demo 2 — CPU vs GPU benchmark (once `nvcc` is enabled)
+## F. Demo 2 — CPU vs GPU benchmark
 
 Compile:
 
