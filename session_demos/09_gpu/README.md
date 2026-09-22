@@ -153,3 +153,31 @@ GPU resources are shared and limited. For a class with many students:
 - release the allocation with `exit` when finished;
 - do not all request GPUs simultaneously unless instructed;
 - use the notebook/Colab version for individual practice when the GPU queue is busy.
+
+
+## G. Guided mini-lab used by the M2.S4 notebook
+
+The main M2.S4 notebook now uses one short GPU allocation to run several real examples:
+
+- `quick_compare.cu` - tiny vs large CPU/GPU vector-add timing;
+- `thread_mapping.cu` - real CUDA block/thread/global-index mapping;
+- `data_movement.cu` - copy every operation vs keep data resident;
+- `vector_add.cu` - minimal CUDA vector addition;
+- `openacc_vector_add.c` - the same accelerator idea expressed with OpenACC;
+- `gpu_lab.sbatch` - compiles and runs all five experiments under one GPU allocation.
+
+Run the complete mini-lab from the login node with:
+
+```bash
+cd ~/hpc_course/session_demos/09_gpu
+sbatch gpu_lab.sbatch
+```
+
+Then inspect the output:
+
+```bash
+squeue -u $USER
+cat m2s4_lab-<JOBID>.out
+```
+
+The notebook submits this batch job automatically, so students normally do not need to run these commands manually.
