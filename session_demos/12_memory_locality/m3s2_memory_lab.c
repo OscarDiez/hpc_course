@@ -380,8 +380,44 @@ static void bench_sparse(void){
     free(val); free(col); free(row); free(x); free(y);
 }
 
+
+static double add_plain(const double *a,const double *b,double *c,size_t n){
+    double t0=now_sec();
+    for(size_t i=0;i<n;++i) c[i]=a[i]+b[i];
+    return now_sec()-t0;
+}
+static double add_unrolled4(const double *a,const double *b,double *c,size_t n){
+    double t0=now_sec();
+    size_t i=0;
+    for(;i+3<n;i+=4){
+        c[i]=a[i]+b[i];
+        c[i+1]=a[i+1]+b[i+1];
+        c[i+2]=a[i+2]+b[i+2];
+        c[i+3]=a[i+3]+b[i+3];
+    }
+    for(;i<n;++i) c[i]=a[i]+b[i];
+    return now_sec()-t0;
+}
+static void bench_unroll(void){
+    const size_t n=16u*1024u*1024u;
+    const int reps=5;
+    double *a=(double*)xaligned(64,n*sizeof(double));
+    double *b=(double*)xaligned(64,n*sizeof(double));
+    double *out=(double*)xaligned(64,n*sizeof(double));
+    for(size_t i=0;i<n;++i){ a[i]=1.0+(i&7)*1e-6; b[i]=2.0+(i&15)*1e-6; }
+    double plain=0.0,unrolled=0.0;
+    for(int r=0;r<reps;++r) plain+=add_plain(a,b,out,n);
+    double c1=out[0]+out[n/2]+out[n-1];
+    for(int r=0;r<reps;++r) unrolled+=add_unrolled4(a,b,out,n);
+    double c2=out[0]+out[n/2]+out[n-1];
+    printf("UNROLL mode=plain n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,plain,c1);
+    printf("UNROLL mode=unrolled4 n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,unrolled,c2);
+    printf("UNROLL plain_over_unrolled=%.2f\n",plain/unrolled);
+    free(a); free(b); free(out);
+}
+
 static void usage(const char *p){
-    fprintf(stderr,"usage: %s latency|stream|stride|matrix|false_sharing|aossoa|tiling|fusion|first_touch|prefetch|sparse|all\n",p);
+    fprintf(stderr,"usage: %s latency|stream|stride|matrix|false_sharing|aossoa|tiling|fusion|first_touch|prefetch|sparse|unroll|all\n",p);
 }
 int main(int argc,char **argv){
     if(argc<2){ usage(argv[0]); return 1; }
@@ -396,11 +432,11 @@ int main(int argc,char **argv){
     else if(!strcmp(m,"fusion")) bench_fusion();
     else if(!strcmp(m,"first_touch")) bench_first_touch();
     else if(!strcmp(m,"prefetch")) bench_prefetch();
-    else if(!strcmp(m,"sparse")) bench_sparse();
+    else if(!strcmp(m,"sparse")) bench_sparse();\n    else if(!strcmp(m,"unroll")) bench_unroll();
     else if(!strcmp(m,"all")){
         bench_latency(); bench_stream(); bench_stride(); bench_matrix();
         bench_false_sharing(); bench_aossoa(); bench_tiling(); bench_fusion();
-        bench_first_touch(); bench_prefetch(); bench_sparse();
+        bench_first_touch(); bench_prefetch(); bench_sparse(); bench_unroll();
     } else { usage(argv[0]); return 1; }
     fprintf(stderr,"sink=%f\n",g_sink);
     return 0;
