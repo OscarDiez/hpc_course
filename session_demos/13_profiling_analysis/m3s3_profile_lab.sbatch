@@ -7,7 +7,7 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=m3s3_profile-%j.out
 
-set -euo pipefail
+set -uo pipefail
 
 echo "M3S3_PROFILE_LAB_START job=${SLURM_JOB_ID:-none} host=$(hostname)"
 echo "===== ENVIRONMENT ====="
@@ -22,10 +22,50 @@ echo "kernel.perf_event_paranoid=$(cat /proc/sys/kernel/perf_event_paranoid 2>/d
 lscpu | grep -E 'Model name|Socket|Core|Thread|NUMA|L1d|L2|L3' || true
 echo "===== END ENVIRONMENT ====="
 
-gcc -O3 -g -fno-omit-frame-pointer -std=c11 m3s3_profile_demo.c -o m3s3_profile_demo
-gcc -O3 -g -pg -fno-omit-frame-pointer -std=c11 m3s3_profile_demo.c -o m3s3_profile_demo_pg
-mpicc -O3 -g -std=c11 m3s3_mpi_wait.c -o m3s3_mpi_wait
-gcc -O2 -g -std=c11 m3s3_syscall_demo.c -o m3s3_syscall_demo
+echo "===== BUILD ====="
+gcc -O3 -g -fno-omit-frame-pointer -std=c11 m3s3_profile_demo.c -o m3s3_profile_demo || {
+  echo "CORE_BUILD_STATUS=FAILED"
+  exit 1
+}
+gcc -O3 -g -pg -fno-omit-frame-pointer -std=c11 m3s3_profile_demo.c -o m3s3_profile_demo_pg || {
+  echo "GPROF_BUILD_STATUS=FAILED"
+  exit 1
+}
+gcc -O2 -g -std=c11 m3s3_syscall_demo.c -o m3s3_syscall_demo || {
+  echo "TRACE_BUILD_STATUS=FAILED"
+  exit 1
+}
+
+MPI_READY=0
+echo "MPI compiler wrapper: $(command -v mpicc || echo NOT_FOUND)"
+if command -v mpicc >/dev/null 2>&1; then
+  # SciTech currently exposes an EESSI gcc first in PATH while mpicc belongs
+  # to the system OpenMPI installation. Mixing those toolchains can cause
+  # undefined OpenMPI/UCX symbols at link time. Prefer the system gcc for
+  # the system OpenMPI wrapper, and treat MPI as an optional extension.
+  if [ -x /usr/bin/gcc ]; then
+    echo "Trying MPI build with system OpenMPI + /usr/bin/gcc"
+    if OMPI_CC=/usr/bin/gcc /usr/bin/mpicc -O3 -g -std=c11 m3s3_mpi_wait.c -o m3s3_mpi_wait 2>mpi_build.err; then
+      MPI_READY=1
+      echo "MPI_BUILD_STATUS=OK"
+    else
+      echo "MPI_BUILD_STATUS=SKIPPED"
+      echo "MPI build is optional for this profiling lab."
+      tail -n 20 mpi_build.err || true
+    fi
+  else
+    if mpicc -O3 -g -std=c11 m3s3_mpi_wait.c -o m3s3_mpi_wait 2>mpi_build.err; then
+      MPI_READY=1
+      echo "MPI_BUILD_STATUS=OK"
+    else
+      echo "MPI_BUILD_STATUS=SKIPPED"
+      tail -n 20 mpi_build.err || true
+    fi
+  fi
+else
+  echo "MPI_BUILD_STATUS=SKIPPED"
+fi
+echo "===== END BUILD ====="
 
 N=4096
 REPS=4
@@ -100,7 +140,7 @@ if command -v perf >/dev/null 2>&1; then
   srun -n1 perf stat -x, -e cycles,instructions,cache-references,cache-misses,branches,branch-misses \
     ./m3s3_profile_demo bad "$N" "$REPS" >perf_bad_stdout.txt 2>perf_bad_stat.txt
   rc=$?
-  set -e
+  set +e
   echo "PERF_STAT_BAD_RC=$rc"
   cat perf_bad_stat.txt
 else
@@ -115,7 +155,7 @@ if command -v perf >/dev/null 2>&1; then
   set +e
   srun -n1 perf record -F 99 -g -o perf.data -- ./m3s3_profile_demo bad "$N" "$REPS" >/dev/null 2>perf_record_err.txt
   rc=$?
-  set -e
+  set +e
   echo "PERF_RECORD_RC=$rc"
   if [ "$rc" -eq 0 ] && [ -f perf.data ]; then
     perf report -i perf.data --stdio --no-children --sort=symbol >perf_report.txt || true
@@ -130,11 +170,19 @@ fi
 echo "===== END PERF SAMPLING ====="
 
 echo "===== MPI WAIT TRACE ====="
-srun -n4 ./m3s3_mpi_wait
+if [ "$MPI_READY" -eq 1 ]; then
+  set +e
+  srun -n4 ./m3s3_mpi_wait
+  mpi_run_rc=$?
+  set +e
+  echo "MPI_RUN_RC=$mpi_run_rc"
+else
+  echo "MPI_TRACE_STATUS unavailable_due_to_MPI_build"
+fi
 echo "===== END MPI WAIT TRACE ====="
 
 echo "===== SCOREP MPI TRACE ====="
-if command -v scorep >/dev/null 2>&1 && command -v scorep-score >/dev/null 2>&1; then
+if [ "$MPI_READY" -eq 1 ] && command -v scorep >/dev/null 2>&1 && command -v scorep-score >/dev/null 2>&1; then
   rm -rf "scorep_m3s3_${SLURM_JOB_ID:-run}"
   scorep mpicc -O2 -g -std=c11 m3s3_mpi_wait.c -o m3s3_mpi_wait_scorep
   export SCOREP_EXPERIMENT_DIRECTORY="scorep_m3s3_${SLURM_JOB_ID:-run}"
