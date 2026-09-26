@@ -48,6 +48,6 @@ run_exp "EXPERIMENT 7 BLOCKING" tiling
 run_exp "EXPERIMENT 8 LOOP FUSION" fusion
 run_exp "EXPERIMENT 9 FIRST TOUCH" first_touch
 run_exp "EXPERIMENT 10 PREFETCH" prefetch
-run_exp "EXPERIMENT 11 SPARSE CSR" sparse
+run_exp "EXPERIMENT 11 SPARSE CSR" sparse\nrun_exp "EXPERIMENT 12 LOOP UNROLLING" unroll
 
 echo "M3S2_MEMORY_LAB_RESULT=PASS"
