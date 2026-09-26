@@ -220,9 +220,72 @@ static void experiment_search(void) {
     free(a);
 }
 
+
+static double run_amdahl_case(long serial_n, long parallel_n, int reps, int threads,
+                              double *serial_time, double *parallel_time) {
+    omp_set_num_threads(threads);
+
+    double serial_sum = 0.0;
+    double parallel_sum = 0.0;
+
+    double total0 = omp_get_wtime();
+
+    /* Deliberately serial phase: this work cannot use extra threads. */
+    double s0 = omp_get_wtime();
+    for (long i = 0; i < serial_n; ++i) {
+        serial_sum += work_value(i, reps);
+    }
+    *serial_time = omp_get_wtime() - s0;
+
+    /* Parallel phase: the same kind of work can use all requested threads. */
+    double p0 = omp_get_wtime();
+    #pragma omp parallel for reduction(+:parallel_sum) schedule(static)
+    for (long i = 0; i < parallel_n; ++i) {
+        parallel_sum += work_value(serial_n + i, reps);
+    }
+    *parallel_time = omp_get_wtime() - p0;
+
+    double total = omp_get_wtime() - total0;
+    sink_value += (serial_sum + parallel_sum) * 1e-30;
+    return total;
+}
+
+static void experiment_amdahl(void) {
+    const int threads_list[] = {1, 2, 4, 8, 16};
+    const long total_n = 6000000L;
+    const long serial_n = total_n / 20;          /* 5% of loop iterations */
+    const long parallel_n = total_n - serial_n;  /* 95% of loop iterations */
+    const int reps = 70;
+
+    printf("# controlled Amdahl experiment: 5%% serial iterations + 95%% parallel iterations\n");
+    printf("# total_n=%ld serial_n=%ld parallel_n=%ld reps=%d\n",
+           total_n, serial_n, parallel_n, reps);
+
+    for (int j = 0; j < 5; ++j) {
+        int p = threads_list[j];
+
+        /* Short warm-up so first-use runtime effects do not dominate. */
+        double warm_s = 0.0, warm_p = 0.0;
+        (void)run_amdahl_case(5000, 95000, 10, p, &warm_s, &warm_p);
+
+        double s1, p1, s2, p2, s3, p3;
+        double t1 = run_amdahl_case(serial_n, parallel_n, reps, p, &s1, &p1);
+        double t2 = run_amdahl_case(serial_n, parallel_n, reps, p, &s2, &p2);
+        double t3 = run_amdahl_case(serial_n, parallel_n, reps, p, &s3, &p3);
+
+        double total_med = median3(t1, t2, t3);
+        double serial_med = median3(s1, s2, s3);
+        double parallel_med = median3(p1, p2, p3);
+
+        printf("AMDAHL_REAL threads=%d serial=%.6f parallel=%.6f total=%.6f\n",
+               p, serial_med, parallel_med, total_med);
+    }
+}
+
+
 int main(int argc, char **argv) {
     if(argc != 2) {
-        fprintf(stderr,"usage: %s strong|weak|small|reduce|taskfarm|scan|stencil|search\n",argv[0]);
+        fprintf(stderr,"usage: %s strong|weak|small|reduce|taskfarm|scan|stencil|search|amdahl\n",argv[0]);
         return 1;
     }
     if(strcmp(argv[1],"strong")==0) experiment_strong();
@@ -233,6 +296,7 @@ int main(int argc, char **argv) {
     else if(strcmp(argv[1],"scan")==0) experiment_scan();
     else if(strcmp(argv[1],"stencil")==0) experiment_stencil();
     else if(strcmp(argv[1],"search")==0) experiment_search();
+    else if(strcmp(argv[1],"amdahl")==0) experiment_amdahl();
     else { fprintf(stderr,"unknown experiment: %s\n",argv[1]); return 1; }
     if(sink_value==1234567.0) fprintf(stderr,"ignore %.12f\n",sink_value);
     return 0;
