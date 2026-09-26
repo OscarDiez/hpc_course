@@ -1,29 +1,18 @@
 # M3.S1 — Performance Models, Scalability & Parallel Patterns
 
-Interactive notebook for Session M3.S1 of the 2026 High Performance Computing course.
-
-## Notebook
-
-- `M3S1_performance_scalability.ipynb`
+Interactive notebook for the 2026 HPC course.
 
 ## Classroom method
-
 **PREDICT → RUN → OBSERVE → EXPLAIN**
 
-The notebook covers:
+## Dependencies
+The notebook uses only the Python standard library. It does not require matplotlib, NumPy or pandas.
 
-- speedup and efficiency;
-- Amdahl and Gustafson;
-- strong vs weak scaling;
-- scaling-curve diagnosis;
-- diminishing returns;
-- parallel-pattern recognition;
-- evidence-based performance claims.
+## Core
+Speedup and efficiency; Amdahl; Amdahl vs Gustafson; strong/weak scaling; scaling detective; diminishing returns; parallel patterns; evidence-based claims.
 
-## JupyterHub
+## Optional extensions
+Fastest vs cheapest; overhead sandbox; weak-scaling efficiency; pattern-to-bottleneck challenge; analyse your own timing dataset.
 
-Open the IE HPC JupyterHub and use **File → Open from URL...** with:
-
-`https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M3S1_performance_scalability/M3S1_performance_scalability.ipynb`
-
-The short `sleep()` experiments are conceptual timing experiments rather than hardware benchmarks.
+## JupyterHub URL
+https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M3S1_performance_scalability/M3S1_performance_scalability.ipynb
