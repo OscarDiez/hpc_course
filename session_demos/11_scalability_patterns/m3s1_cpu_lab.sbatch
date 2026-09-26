@@ -86,4 +86,9 @@ for p in 1 2 4 8; do
 done
 endsection 10
 
+
+section 11 'REAL AMDAHL / 5% SERIAL + 95% PARALLEL'
+./m3s1_openmp_patterns amdahl
+endsection 11
+
 printf '\nM3S1_CPU_LAB_RESULT=PASS\n'
