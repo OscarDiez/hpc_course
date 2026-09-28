@@ -1,4 +1,4 @@
-CC ?= gcc
+CC = gcc
 CFLAGS ?= -O3 -std=gnu11 -march=native
 
 BIN_DIR := bin
@@ -18,4 +18,4 @@ $(BIN_DIR)/p3_pipeline_gprof: $(SRC) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -pg $(SRC) -o $@
 
 clean:
-	rm -rf $(BIN_DIR) gmon.out *.bin p3_*.out p3_evidence.txt
+	rm -rf $(BIN_DIR) gmon.out *.bin p3_evidence.txt
