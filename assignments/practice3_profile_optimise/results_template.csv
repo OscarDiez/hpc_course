@@ -1,0 +1,7 @@
+configuration,run,total_seconds,compute_seconds,checksum
+baseline,1,,,
+baseline,2,,,
+baseline,3,,,
+optimised,1,,,
+optimised,2,,,
+optimised,3,,,
