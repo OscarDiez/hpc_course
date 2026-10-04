@@ -1,0 +1,261 @@
+"""M3S4 measured exercises. All files stay inside a unique, user-owned run directory."""
+from pathlib import Path
+import argparse, ctypes as ct, ctypes.util, hashlib, json, math, os, platform
+import shutil, statistics, subprocess, sys, tempfile, time, uuid
+import numpy as np
+BUILD = 'M3S4-2026-10-04-v5'
+DEFAULTS = dict(sizes=[128,256,512,1024], repeats=5, fft_batch=500, seed=2026, input_seed=12345,
+                files=200, bytes_per_file=4096, fsync=False, heat_points=128,
+                heat_steps=100, checkpoint_interval=10, failure_step=57,
+                noise_sigma=0.01, input_elements=50000, mpi_ranks=4, mpi_block=1024,
+                weather_shape=[4,32,32], weather_slice=2, compression=None)
+
+def sha(path):
+    h=hashlib.sha256()
+    with open(path,'rb') as f:
+        for b in iter(lambda:f.read(1048576),b''): h.update(b)
+    return h.hexdigest()
+
+def save(path,data):
+    tmp=Path(str(path)+'.tmp'); tmp.write_text(json.dumps(data,indent=2)); tmp.replace(path)
+
+def checked(argv,cwd,timeout=120):
+    p=subprocess.run([str(x) for x in argv],cwd=cwd,text=True,capture_output=True,timeout=timeout)
+    if p.returncode: raise RuntimeError(f'{argv}: rc={p.returncode}\n{p.stdout}\n{p.stderr}')
+    return p.stdout
+
+def validate(s):
+    for k in ['repeats','fft_batch','files','bytes_per_file','heat_points','heat_steps',
+              'checkpoint_interval','input_elements','mpi_ranks','mpi_block']:
+        if type(s[k]) is not int or s[k]<1: raise ValueError(f'{k} must be a positive integer')
+    if not s['sizes'] or any(type(n)is not int or not 16<=n<=4096 for n in s['sizes']): raise ValueError('sizes: integers 16..4096')
+    if s['heat_points']<3 or not 1<=s['failure_step']<s['heat_steps']: raise ValueError('invalid heat grid/failure step')
+    if s['mpi_ranks']>64 or s['mpi_block']>1048576: raise ValueError('MPI classroom limits exceeded')
+    if len(s['weather_shape'])!=3 or any(type(n)is not int or n<1 for n in s['weather_shape']): raise ValueError('weather_shape must have three positive dimensions')
+    if not 0<=s['weather_slice']<s['weather_shape'][0]: raise ValueError('weather_slice outside time dimension')
+    if s['compression'] not in [None,'gzip']: raise ValueError('compression must be None or gzip')
+    if s['noise_sigma']<0 or not math.isfinite(s['noise_sigma']): raise ValueError('invalid noise_sigma')
+    for k in ['seed','input_seed']:
+        if type(s[k])is not int or s[k]<0: raise ValueError(k+' must be nonnegative integer')
+    if s['files']>5000 or s['repeats']>20 or s['heat_steps']>10000 or s['fft_batch']>100000 or s['input_elements']>2_000_000: raise ValueError('classroom work limit exceeded')
+    if s['files']*s['bytes_per_file']>64*1024*1024 or np.prod(s['weather_shape'])>2_000_000: raise ValueError('classroom data limit exceeded')
+
+def summary(samples):
+    return dict(samples_s=samples,median_s=statistics.median(samples),min_s=min(samples),max_s=max(samples))
+
+def fft_lab(s,root):
+    # Both direct DFT and FFTW execute compiled code through ctypes. Planning is separate.
+    compiler=shutil.which('gcc'); libname=ctypes.util.find_library('fftw3') or ('libfftw3.so' if os.getenv('EBROOTFFTW') else None)
+    if not compiler or not libname: return dict(status='SKIPPED',reason='gcc or FFTW3 shared library unavailable')
+    source=Path(__file__).with_name('m3s4_dft.c'); binary=root/'direct_dft.so'
+    command=[compiler,'-O3','-Wall','-Wextra','-Werror','-fPIC','-shared',str(source),'-lm','-o',str(binary)]
+    checked(command,root)
+    direct=ct.CDLL(str(binary)); direct.direct_dft.argtypes=[ct.c_int,ct.c_void_p,ct.c_void_p]; direct.direct_dft.restype=None
+    fftw=ct.CDLL(libname)
+    fftw.fftw_plan_dft_r2c_1d.argtypes=[ct.c_int,ct.c_void_p,ct.c_void_p,ct.c_uint]; fftw.fftw_plan_dft_r2c_1d.restype=ct.c_void_p
+    fftw.fftw_execute.argtypes=[ct.c_void_p]; fftw.fftw_execute.restype=None
+    fftw.fftw_destroy_plan.argtypes=[ct.c_void_p]; fftw.fftw_destroy_plan.restype=None
+    rows=[]
+    for n in s['sizes']:
+        j=np.arange(n); x=np.ascontiguousarray(np.sin(2*np.pi*3*j/n)+0.5*np.sin(2*np.pi*7*j/n),dtype=np.float64)
+        ref=np.empty(n,dtype=np.complex128); spectrum=np.empty(n//2+1,dtype=np.complex128)
+        t=time.perf_counter(); plan=fftw.fftw_plan_dft_r2c_1d(n,x.ctypes.data,spectrum.ctypes.data,64) # FFTW_ESTIMATE
+        planning=time.perf_counter()-t
+        if not plan: raise RuntimeError('FFTW planning failed')
+        try:
+            def dft(): direct.direct_dft(n,x.ctypes.data,ref.ctypes.data)
+            def fft():
+                for _ in range(s['fft_batch']): fftw.fftw_execute(plan)
+            dft(); fft() # warmup, excluded
+            assert np.allclose(ref[:n//2+1],spectrum,rtol=1e-9,atol=1e-8)
+            assert np.allclose(spectrum,np.fft.rfft(x),rtol=1e-9,atol=1e-8)
+            ds=[]; fs=[]
+            for r in range(s['repeats']):
+                for label,fn in ([('d',dft),('f',fft)] if r%2==0 else [('f',fft),('d',dft)]):
+                    t=time.perf_counter(); fn(); elapsed=time.perf_counter()-t
+                    (ds if label=='d' else fs).append(elapsed if label=='d' else elapsed/s['fft_batch'])
+            error=float(np.max(np.abs(ref[:n//2+1]-spectrum)))
+            assert np.allclose(ref[:n//2+1],spectrum,rtol=1e-9,atol=1e-8)
+            np.savez(root/f'spectrum_{n}.npz',signal=x,spectrum=spectrum)
+            rows.append(dict(n=n,dft=summary(ds),fftw=summary(fs),planning_s=planning,max_error=error,
+                             strongest_bins=np.argsort(np.abs(spectrum))[-2:][::-1].tolist()))
+        finally: fftw.fftw_destroy_plan(plan)
+    return dict(status='PASS',rows=rows,compiler=checked([compiler,'--version'],root).splitlines()[0],
+                compiler_command=command,fftw_library=libname,fftw_version=ct.string_at(ct.addressof((ct.c_char*1).in_dll(fftw,'fftw_version'))).decode(),
+                note='Serial. Forward unnormalized transforms; compare N/2+1 real-input bins. FFT timing includes amortized Python-call overhead, excludes planning.')
+
+def io_lab(s,root):
+    # Distinct records expose missing, reordered or corrupt content.
+    payloads=[bytes([i%251])*s['bytes_per_file'] for i in range(s['files'])]
+    expected=hashlib.sha256(b''.join(payloads)).hexdigest(); samples={'many':[],'one':[]}
+    for r in range(s['repeats']):
+        for case in (['many','one'] if r%2==0 else ['one','many']):
+            with tempfile.TemporaryDirectory(prefix=f'io-{case}-',dir=root) as tmp:
+                d=Path(tmp); t=time.perf_counter()
+                if case=='many':
+                    for i,payload in enumerate(payloads):
+                        with open(d/f'{i:06d}.bin','wb') as f:
+                            f.write(payload)
+                            if s['fsync']: f.flush(); os.fsync(f.fileno())
+                    samples[case].append(time.perf_counter()-t)
+                    paths=sorted(d.glob('*.bin'))
+                else:
+                    with open(d/'all.bin','wb') as f:
+                        for payload in payloads: f.write(payload)
+                        if s['fsync']: f.flush(); os.fsync(f.fileno())
+                    samples[case].append(time.perf_counter()-t)
+                    paths=[d/'all.bin']
+                assert len(paths)==(s['files'] if case=='many' else 1)
+                assert sum(p.stat().st_size for p in paths)==s['files']*s['bytes_per_file']
+                h=hashlib.sha256()
+                for p in paths: h.update(p.read_bytes())
+                assert h.hexdigest()==expected
+    return dict(status='PASS',many=summary(samples['many']),one=summary(samples['one']),bytes=s['files']*s['bytes_per_file'],
+                payload_sha256=expected,path=str(root),fsync=s['fsync'],
+                note='Single writer, same ordered payload, creation/writes/close timed; directory creation, readback and removal excluded. Warm page cache; no physical disk bandwidth claim. fsync=False does not measure durable checkpoint cost.')
+
+def heat_step(a):
+    out=a.copy(); out[1:-1]=a[1:-1]+0.2*(a[:-2]-2*a[1:-1]+a[2:]); return out
+
+def heat_child(config,root,mode):
+    s=json.loads(Path(config).read_text()); root=Path(root); n=s['heat_points']
+    identity={'points':n,'alpha':0.2,'steps':s['heat_steps']}; cp=root/'checkpoint.json'; start=0
+    a=np.sin(np.linspace(0,np.pi,n)); a[0]=a[-1]=0
+    if mode=='resume':
+        state=json.loads(cp.read_text()); assert state['schema']==1 and state['parameters']==identity
+        a=np.array(state['grid'],dtype=float); start=state['step']
+        assert a.shape==(n,) and np.all(np.isfinite(a)) and 0<=start<=s['heat_steps']
+        assert hashlib.sha256(a.tobytes()).hexdigest()==state['grid_sha256']
+    writes=0; checkpoint_s=0.0
+    for step in range(start+1,s['heat_steps']+1):
+        a=heat_step(a)
+        if mode=='fail' and step==s['failure_step']:
+            save(root/'failure.json',{'failure_step':step,'last_checkpoint':(step-1)//s['checkpoint_interval']*s['checkpoint_interval'],'checkpoint_writes':writes,'checkpoint_seconds':checkpoint_s})
+            os._exit(17) # controlled process termination; latest complete checkpoint survives
+        if mode=='fail' and step%s['checkpoint_interval']==0:
+            t=time.perf_counter(); save(cp,{'schema':1,'step':step,'parameters':identity,'grid':a.tolist(),'grid_sha256':hashlib.sha256(a.tobytes()).hexdigest()})
+            checkpoint_s+=time.perf_counter()-t; writes+=1
+    np.save(root/(mode+'_final.npy'),a)
+    save(root/(mode+'_stats.json'),{'start_step':start,'checkpoint_writes':writes,'checkpoint_seconds':checkpoint_s})
+
+def checkpoint_lab(s,root,config):
+    cmd=[sys.executable,str(Path(__file__).resolve()),'--heat-child',str(config),str(root)]
+    checked(cmd+['reference'],root)
+    ref=np.load(root/'reference_final.npy').copy()
+    p=subprocess.run(cmd+['fail'],cwd=root,capture_output=True,text=True,timeout=120)
+    assert p.returncode==17, p.stderr
+    cp=root/'checkpoint.json'; loss=json.loads((root/'failure.json').read_text())
+    if cp.exists():
+        checked(cmd+['resume'],root); restarted=root/'resume_final.npy'; resumed=json.loads((root/'resume_stats.json').read_text())['start_step']
+    else:
+        # Failure before first checkpoint: restart from initial state, explicitly recorded.
+        checked(cmd+['reference'],root); restarted=root/'reference_final.npy'; resumed=0
+    actual=np.load(restarted)
+    assert np.array_equal(ref,actual)
+    return dict(status='PASS',failure_exit_code=17,failure_step=s['failure_step'],resumed_from_step=resumed,
+                completed_steps_lost=s['failure_step']-1-resumed,final_identical=True,
+                checkpoint_bytes=cp.stat().st_size if cp.exists() else 0,checkpoint_writes=loss['checkpoint_writes'],checkpoint_seconds=loss['checkpoint_seconds'],
+                note='Application checkpoint: step, parameters, full grid and integrity hash. Separate processes demonstrate restart. Atomic rename protects incomplete files; this classroom version does not fsync or promise power-loss durability.')
+
+def hdf5_lab(s,root):
+    try: import h5py
+    except ImportError:
+        h5cc=shutil.which('h5cc')
+        if not h5cc: return dict(status='SKIPPED',reason='Neither h5py nor h5cc available; load a compatible HDF5/h5py module')
+        cmd=[h5cc,str(Path(__file__).with_name('m3s4_hdf5.c')),'-o',str(root/'hdf5_demo')]
+        checked(cmd,root); result=json.loads(checked([root/'hdf5_demo'],root)); assert result['passed']
+        return dict(status='PASS',backend='C HDF5',result=result,command=cmd,
+                    note='C fallback uses fixed 4x8x8 shape and time slice 2; editable weather_shape/compression require h5py.')
+    shape=tuple(s['weather_shape']); t,y,x=np.indices(shape); data=273.15+t+0.1*y+0.01*x
+    path=root/'weather.h5'; start=time.perf_counter()
+    with h5py.File(path,'w') as f:
+        ds=f.create_dataset('temperature',data=data,chunks=(1,shape[1],shape[2]),compression=s['compression'])
+        ds.attrs['units']='K'; ds.attrs['dimensions']='time,y,x'
+        f.create_dataset('time',data=np.arange(shape[0])); f['time'].attrs['units']='hours since simulation start'
+    write_s=time.perf_counter()-start
+    with h5py.File(path,'r') as f:
+        ds=f['temperature']; assert ds.shape==shape and ds.attrs['units']=='K'
+        assert np.array_equal(ds[:],data)
+        start=time.perf_counter(); region=ds[s['weather_slice'],:,:]; read_s=time.perf_counter()-start
+        assert np.array_equal(region,data[s['weather_slice']])
+        info=dict(shape=list(ds.shape),chunks=list(ds.chunks),compression=ds.compression,units=ds.attrs['units'])
+    return dict(status='PASS',backend='h5py serial HDF5',h5py=h5py.__version__,hdf5=h5py.version.hdf5_version,
+                dataset=info,bytes=path.stat().st_size,write_close_s=write_s,read_slice_s=read_s,
+                note='Full readback plus selected time slice. Serial HDF5, not parallel HDF5; NetCDF would add standardized dimensions/conventions. No compression speedup assumed.')
+
+def mpi_lab(s,root):
+    cc=shutil.which('mpicc')
+    if not cc: return dict(status='SKIPPED',reason='mpicc unavailable; load MPI toolchain')
+    inside=bool(os.getenv('SLURM_JOB_ID')); launcher=shutil.which('srun' if inside else 'mpiexec')
+    if not launcher: return dict(status='SKIPPED',reason='MPI launcher unavailable')
+    if inside and int(os.getenv('SLURM_NTASKS','1'))<s['mpi_ranks']: raise RuntimeError('requested MPI ranks exceed Slurm allocation')
+    source=Path(__file__).with_name('m3s4_mpiio.c'); binary=root/'mpiio'
+    compile_cmd=[cc,'-O2','-Wall','-Wextra','-Werror',str(source),'-o',str(binary)]; checked(compile_cmd,root)
+    command=[launcher,'-n',str(s['mpi_ranks']),str(binary),str(s['mpi_block'])]
+    text=checked(command,root); result=json.loads(next(line for line in text.splitlines() if line.startswith('{')))
+    assert result['passed'] and result['ranks']==s['mpi_ranks']
+    assert result['bytes']==s['mpi_ranks']*s['mpi_block']
+    contents=(root/'mpi_output.bin').read_bytes()
+    expected=b''.join(bytes((r*17+j)%251 for j in range(s['mpi_block'])) for r in range(s['mpi_ranks']))
+    assert contents==expected
+    return dict(status='PASS',command=command,compiler_command=compile_cmd,result=result,
+                note='Real MPI processes, collective write_at_all to nonoverlapping byte ranges, sync/close, reopen and collective readback. Demonstrates correctness, not proof of scalability on a parallel filesystem.')
+
+def simulation(data,seed,sigma):
+    noise=np.random.default_rng(seed).normal(0,sigma,size=data.shape)
+    return float(np.mean((data+noise)**2))
+
+def replay(manifest_path):
+    path=Path(manifest_path).resolve(); m=json.loads(path.read_text()); root=path.parent
+    assert sha(Path(__file__))==m['sources']['m3s4_lab.py'], 'runner source changed'
+    inp=root/m['input']['path']; assert sha(inp)==m['input']['sha256'], 'input checksum mismatch'
+    params=m['parameters']; result=simulation(np.load(inp),params['seed'],params['noise_sigma'])
+    assert math.isclose(result,m['result']['value'],rel_tol=1e-12,abs_tol=1e-12), 'scientific result differs'
+    return dict(status='PASS',recorded=m['result']['value'],replayed=result,
+                note='Numerical agreement within tolerance; replay timings are not expected to match.')
+
+def main(config,root):
+    root=Path(root).resolve(); root.mkdir(parents=True,exist_ok=True)
+    if (root/'report.json').exists(): raise RuntimeError('Use a new run directory; report already exists')
+    s=json.loads(Path(config).read_text()); validate(s); save(root/'settings.json',s); config=root/'settings.json'
+    report=dict(build=BUILD,settings=s,run_id=root.name,experiments={})
+    for name,fn in [('fft',lambda:fft_lab(s,root)),('io',lambda:io_lab(s,root)),
+                    ('checkpoint',lambda:checkpoint_lab(s,root,config)),('hdf5',lambda:hdf5_lab(s,root)),('mpiio',lambda:mpi_lab(s,root))]:
+        try: report['experiments'][name]=fn()
+        except Exception as e: report['experiments'][name]=dict(status='FAIL',reason=f'{type(e).__name__}: {e}')
+        print(name,report['experiments'][name]['status'],flush=True); save(root/'report.json',report)
+    data=np.random.default_rng(s['input_seed']).normal(size=s['input_elements']); np.save(root/'input.npy',data)
+    samples=[]; result=None
+    for _ in range(s['repeats']):
+        t=time.perf_counter(); result=simulation(data,s['seed'],s['noise_sigma']); samples.append(time.perf_counter()-t)
+    bad=[simulation(data,int.from_bytes(os.urandom(8),'little'),s['noise_sigma']) for _ in range(2)]
+    sources={p.name:sha(p) for p in Path(__file__).parent.glob('m3s4_*') if p.suffix in ['.py','.c','.sbatch']}
+    git=subprocess.run(['git','rev-parse','HEAD'],cwd=Path(__file__).parent,capture_output=True,text=True)
+    df=subprocess.run(['df','-T',str(root)],capture_output=True,text=True) if shutil.which('df') else None
+    manifest=dict(build=BUILD,run_id=root.name,sources=sources,code_commit=git.stdout.strip() if git.returncode==0 else None,
+                  input=dict(path='input.npy',sha256=sha(root/'input.npy'),elements=s['input_elements']),parameters=s,
+                  command=[sys.executable,str(Path(__file__).resolve()),'--config','settings.json','--out',str(root)],
+                  replay_command=[sys.executable,str(Path(__file__).resolve()),'--replay','manifest.json'],
+                  software=dict(python=sys.version,numpy=np.__version__,modules=[m for m in os.getenv('LOADEDMODULES','').split(':') if m],
+                                fftw=report['experiments']['fft'],hdf5=report['experiments']['hdf5']),
+                  system=dict(host=platform.node(),platform=platform.platform(),cpus=sorted(os.sched_getaffinity(0)) if hasattr(os,'sched_getaffinity') else None,
+                              filesystem=df.stdout if df else None),
+                  resources={k:os.getenv(k) for k in ['SLURM_JOB_ID','SLURM_JOB_NUM_NODES','SLURM_NTASKS','SLURM_CPUS_PER_TASK','SLURM_JOB_PARTITION','SLURM_JOB_NODELIST','OMP_NUM_THREADS']},
+                  result=dict(value=result,measurement=summary(samples)),
+                  outputs={p.name:sha(p) for p in root.iterdir() if p.is_file() and p.name not in ['report.json','manifest.json']})
+    save(root/'manifest.json',manifest); report['experiments']['replay']=replay(root/'manifest.json')
+    report['unseeded_results']=bad
+    report['experiments']['replay']['changed_seed_result']=simulation(data,s['seed']+1,s['noise_sigma'])
+    report['experiments']['replay']['changed_sigma_result']=simulation(data,s['seed'],s['noise_sigma']*2)
+    report['failed']=[k for k,v in report['experiments'].items() if v['status']=='FAIL']
+    report['skipped']=[k for k,v in report['experiments'].items() if v['status']=='SKIPPED']
+    report['core_pass']=not report['failed'] and all(report['experiments'][k]['status']=='PASS' for k in ['io','checkpoint','replay'])
+    save(root/'report.json',report); return 0 if report['core_pass'] else 1
+
+if __name__=='__main__':
+    if '--heat-child' in sys.argv: heat_child(*sys.argv[2:]); sys.exit(0)
+    parser=argparse.ArgumentParser(); parser.add_argument('--config'); parser.add_argument('--out'); parser.add_argument('--replay')
+    args=parser.parse_args()
+    if args.replay: print(json.dumps(replay(args.replay),indent=2))
+    elif args.config and args.out: sys.exit(main(args.config,args.out))
+    else: parser.error('--config and --out required, or --replay')
