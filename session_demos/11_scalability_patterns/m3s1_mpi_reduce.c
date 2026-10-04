@@ -19,6 +19,7 @@ int main(int argc, char **argv) {
 
     long total_n = 12000000L;
     if (argc > 1) total_n = atol(argv[1]);
+    if (total_n < 1 || total_n > 12000000) { MPI_Finalize(); return 2; }
     long base = total_n / size;
     long rem = total_n % size;
     long local_n = base + (rank < rem ? 1 : 0);
@@ -45,7 +46,7 @@ int main(int argc, char **argv) {
     MPI_Reduce(&total, &max_total, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
 
     if (rank == 0) {
-        printf("MPI_REDUCE ranks=%d n=%ld compute_max=%.6f reduce_max=%.6f total_max=%.6f sum=%.6e\n",
+        printf("MPI_REDUCE ranks=%d n=%ld compute_max=%.6f reduce_max=%.6f total_max=%.6f sum=%.12e\n",
                size, total_n, max_comp, max_reduce, max_total, global_sum);
     }
     MPI_Finalize();

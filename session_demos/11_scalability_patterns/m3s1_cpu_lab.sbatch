@@ -18,6 +18,8 @@ unset SLURM_MEM_PER_NODE
 module purge
 module load foss/2023b
 
+export OMP_DYNAMIC=FALSE
+export M3_MAX_THREADS=${M3_MAX_THREADS:-16}
 export OMP_PLACES=cores
 export OMP_PROC_BIND=close
 
@@ -28,8 +30,12 @@ printf 'USER=%s\n' "$USER"
 printf 'JOB_ID=%s\n' "$SLURM_JOB_ID"
 printf 'HOST=%s\n' "$(hostname)"
 printf 'CPUS_PER_TASK=%s\n' "$SLURM_CPUS_PER_TASK"
+printf 'CONFIG map_n=%s weak_n=%s serial_percent=%s stencil_n=%s steps=%s max_threads=%s\n' "${M3_MAP_N:-1000000}" "${M3_WEAK_N:-100000}" "${M3_SERIAL_PERCENT:-5}" "${M3_STENCIL_N:-400000}" "${M3_STEPS:-20}" "$M3_MAX_THREADS"
+
 printf 'GCC=%s\n' "$(command -v gcc)"
 printf 'MPICC=%s\n' "$(command -v mpicc)"
+gcc --version | head -n 1
+printf 'BUILD_FLAGS=-O3 -std=c11 (OpenMP: -fopenmp)\n'
 
 gcc -O3 -fopenmp -std=c11 m3s1_openmp_patterns.c -o m3s1_openmp_patterns
 mpicc -O3 -std=c11 m3s1_mpi_reduce.c -o m3s1_mpi_reduce
@@ -76,19 +82,25 @@ endsection 8
 
 section 9 'MPI REDUCTION / MAX RANK TIME'
 for p in 1 2 4 8; do
-    srun --exclusive -n "$p" -c 1 ./m3s1_mpi_reduce 12000000
+    (( p <= M3_MAX_THREADS )) || continue
+    srun --exclusive -n "$p" -c 1 ./m3s1_mpi_reduce "${M3_MPI_N:-1000000}"
 done
 endsection 9
 
 section 10 'MPI STENCIL / HALO EXCHANGE'
 for p in 1 2 4 8; do
-    srun --exclusive -n "$p" -c 1 ./m3s1_mpi_stencil 1600000 30
+    (( p <= M3_MAX_THREADS )) || continue
+    srun --exclusive -n "$p" -c 1 ./m3s1_mpi_stencil "${M3_STENCIL_N:-400000}" "${M3_STEPS:-20}"
 done
 endsection 10
 
 
-section 11 'REAL AMDAHL / 5% SERIAL + 95% PARALLEL'
+section 11 'REAL AMDAHL / CONFIGURABLE SERIAL WORK'
 ./m3s1_openmp_patterns amdahl
 endsection 11
+
+section 12 'MONTE CARLO / REPRODUCIBLE INDEPENDENT SAMPLES'
+./m3s1_openmp_patterns montecarlo
+endsection 12
 
 printf '\nM3S1_CPU_LAB_RESULT=PASS\n'

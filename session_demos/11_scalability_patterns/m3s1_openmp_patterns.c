@@ -4,7 +4,23 @@
 #include <string.h>
 #include <math.h>
 #include <float.h>
+#include <stdint.h>
+#include <errno.h>
 
+static long setting(const char *name, long fallback, long lo, long hi) {
+    const char *value = getenv(name);
+    if (!value) return fallback;
+    char *end; errno = 0;
+    long n = strtol(value, &end, 10);
+    if (errno || *end || end == value || n < lo || n > hi) {
+        fprintf(stderr, "invalid %s (allowed %ld..%ld)\n", name, lo, hi);
+        exit(2);
+    }
+    return n;
+}
+static int max_threads(void) { return (int)setting("M3_MAX_THREADS", 16, 1, 16); }
+static double last_map_sum;
+static double last_farm_sum;
 static volatile double sink_value = 0.0;
 
 static inline double work_value(long i, int reps) {
@@ -32,43 +48,47 @@ static double run_map(long n, int reps, int threads) {
         sum += work_value(i, reps);
     }
     double t = omp_get_wtime() - t0;
+    last_map_sum = sum;
     sink_value += sum * 1e-30;
     return t;
 }
 
 static void experiment_strong(void) {
     const int threads_list[] = {1,2,4,8,16};
-    const long n = 6000000L;
-    const int reps = 70;
+    const long n = setting("M3_MAP_N", 1000000, 100, 12000000);
+    const int reps = (int)setting("M3_WORK_REPS", 40, 1, 200);
     printf("# fixed problem: n=%ld reps=%d\n", n, reps);
     for (int j=0; j<5; ++j) {
         int p = threads_list[j];
+        if (p > max_threads()) continue;
         (void)run_map(20000, 10, p);
         double a=run_map(n,reps,p), b=run_map(n,reps,p), c=run_map(n,reps,p);
-        printf("OMP_STRONG threads=%d t1=%.6f t2=%.6f t3=%.6f median=%.6f\n", p,a,b,c,median3(a,b,c));
+        printf("OMP_STRONG threads=%d t1=%.9f t2=%.9f t3=%.9f median=%.9f sum=%.12e\n", p,a,b,c,median3(a,b,c),last_map_sum);
     }
 }
 
 static void experiment_weak(void) {
     const int threads_list[] = {1,2,4,8,16};
-    const long per_thread = 450000L;
-    const int reps = 70;
+    const long per_thread = setting("M3_WEAK_N", 100000, 100, 450000);
+    const int reps = (int)setting("M3_WORK_REPS", 40, 1, 200);
     printf("# weak scaling: work_per_thread=%ld reps=%d\n", per_thread, reps);
     for (int j=0; j<5; ++j) {
         int p = threads_list[j];
+        if (p > max_threads()) continue;
         long n = per_thread * p;
         (void)run_map(20000, 10, p);
         double a=run_map(n,reps,p), b=run_map(n,reps,p), c=run_map(n,reps,p);
-        printf("OMP_WEAK threads=%d n=%ld t1=%.6f t2=%.6f t3=%.6f median=%.6f\n", p,n,a,b,c,median3(a,b,c));
+        printf("OMP_WEAK threads=%d n=%ld t1=%.9f t2=%.9f t3=%.9f median=%.6f\n", p,n,a,b,c,median3(a,b,c));
     }
 }
 
 static void experiment_small(void) {
     const int threads_list[] = {1,2,4,8,16};
-    const long n = 20000L;
+    const long n = setting("M3_SMALL_N", 20000, 10, 200000);
     const int reps = 30;
     for (int j=0; j<5; ++j) {
         int p=threads_list[j];
+        if (p > max_threads()) continue;
         double best=DBL_MAX;
         for (int r=0;r<7;++r) {
             double t=run_map(n,reps,p);
@@ -84,6 +104,7 @@ static void experiment_reduce(void) {
     const int reps = 30;
     for (int j=0;j<5;++j) {
         int p=threads_list[j];
+        if (p > max_threads()) continue;
         omp_set_num_threads(p);
         double sum=0.0;
         double t0=omp_get_wtime();
@@ -95,37 +116,45 @@ static void experiment_reduce(void) {
     }
 }
 
-static void busy_units(int units) {
+static double busy_units(int units) {
     double s=0.0;
     long loops = 30000L * units;
     for(long i=0;i<loops;++i) s += work_value(i,8);
-    sink_value += s*1e-30;
+    return s;
 }
 
 static double taskfarm_run(int dynamic_schedule) {
     const int tasks=64;
+    const int heavy=(int)setting("M3_TASK_HEAVY",12,1,30);
+    double total_work=0.0;
     double t0=omp_get_wtime();
     if(dynamic_schedule) {
-        #pragma omp parallel for schedule(dynamic,1)
+        #pragma omp parallel for schedule(dynamic,1) reduction(+:total_work)
         for(int i=0;i<tasks;++i) {
-            int weight = (i < 12) ? 12 : ((i < 28) ? 5 : 1);
-            busy_units(weight);
+            int weight = (i < 12) ? heavy : ((i < 28) ? 5 : 1);
+            total_work += busy_units(weight);
         }
     } else {
-        #pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static) reduction(+:total_work)
         for(int i=0;i<tasks;++i) {
-            int weight = (i < 12) ? 12 : ((i < 28) ? 5 : 1);
-            busy_units(weight);
+            int weight = (i < 12) ? heavy : ((i < 28) ? 5 : 1);
+            total_work += busy_units(weight);
         }
     }
-    return omp_get_wtime()-t0;
+    double elapsed=omp_get_wtime()-t0;
+    last_farm_sum=total_work;
+    sink_value += total_work*1e-30;
+    return elapsed;
 }
 
 static void experiment_taskfarm(void) {
-    omp_set_num_threads(8);
+    int threads = max_threads() < 8 ? max_threads() : 8;
+    omp_set_num_threads(threads);
     double ts=taskfarm_run(0);
+    double expected=last_farm_sum;
     double td=taskfarm_run(1);
-    printf("TASK_FARM threads=8 static=%.6f dynamic=%.6f speedup_dynamic_vs_static=%.3f\n",ts,td,ts/td);
+    if (fabs(last_farm_sum-expected)>1e-9*fabs(expected)) { fprintf(stderr,"task farm sum mismatch\n"); exit(3); }
+    printf("TASK_FARM threads=%d static=%.9f dynamic=%.9f speedup_dynamic_vs_static=%.3f\n",threads,ts,td,ts/td);
 }
 
 static void parallel_scan(const double *in, double *out, long n, int threads) {
@@ -165,23 +194,26 @@ static void experiment_scan(void) {
     int pvals[] = {1,4,8};
     for(int pidx=0;pidx<3;++pidx){
         int p=pvals[pidx];
+        if (p > max_threads()) continue;
         double t0=omp_get_wtime();
         parallel_scan(in,out,n,p);
         double t=omp_get_wtime()-t0;
+        for(long i=0;i<n;++i) if(out[i]!=(double)i) { fprintf(stderr,"scan failed\n");exit(3); }
         printf("SCAN threads=%d seconds=%.6f last=%.1f expected=%.1f\n",p,t,out[n-1],(double)(n-1));
     }
     free(in);free(out);
 }
 
 static void experiment_stencil(void) {
-    const long n=1600000L;
-    const int steps=30;
+    const long n=setting("M3_STENCIL_N",400000,16,1600000);
+    const int steps=(int)setting("M3_STEPS", 20, 1, 100);
     double *a=(double*)malloc((size_t)n*sizeof(double));
     double *b=(double*)malloc((size_t)n*sizeof(double));
     if(!a||!b){fprintf(stderr,"allocation failed\n");exit(2);}
     int pvals[] = {1,4,16};
     for(int pidx=0;pidx<3;++pidx){
         int p=pvals[pidx];
+        if (p > max_threads()) continue;
         omp_set_num_threads(p);
         for(long i=0;i<n;++i) a[i]=(i%100)*0.01;
         double *cur=a,*next=b;
@@ -193,7 +225,9 @@ static void experiment_stencil(void) {
             double *tmp=cur;cur=next;next=tmp;
         }
         double t=omp_get_wtime()-t0;
-        printf("OMP_STENCIL threads=%d n=%ld steps=%d seconds=%.6f checksum=%.6e\n",p,n,steps,t,cur[n/2]);
+        double checksum=0.0;
+        for(long i=0;i<n;++i) checksum+=cur[i];
+        printf("OMP_STENCIL threads=%d n=%ld steps=%d seconds=%.6f checksum=%.12e\n",p,n,steps,t,checksum);
     }
     free(a);free(b);
 }
@@ -209,6 +243,7 @@ static void experiment_search(void) {
     int pvals[] = {1,4,8};
     for(int pidx=0;pidx<3;++pidx){
         int p=pvals[pidx];
+        if (p > max_threads()) continue;
         omp_set_num_threads(p);
         long found=n;
         double t0=omp_get_wtime();
@@ -252,17 +287,18 @@ static double run_amdahl_case(long serial_n, long parallel_n, int reps, int thre
 
 static void experiment_amdahl(void) {
     const int threads_list[] = {1, 2, 4, 8, 16};
-    const long total_n = 6000000L;
-    const long serial_n = total_n / 20;          /* 5% of loop iterations */
+    const long total_n = setting("M3_MAP_N", 1000000, 100, 12000000);
+    const long serial_n = total_n * setting("M3_SERIAL_PERCENT", 5, 0, 50) / 100;          /* 5% of loop iterations */
     const long parallel_n = total_n - serial_n;  /* 95% of loop iterations */
-    const int reps = 70;
+    const int reps = (int)setting("M3_WORK_REPS", 40, 1, 200);
 
-    printf("# controlled Amdahl experiment: 5%% serial iterations + 95%% parallel iterations\n");
+    printf("# controlled Amdahl experiment: serial iterations are configurable; time fraction is measured\n");
     printf("# total_n=%ld serial_n=%ld parallel_n=%ld reps=%d\n",
            total_n, serial_n, parallel_n, reps);
 
     for (int j = 0; j < 5; ++j) {
         int p = threads_list[j];
+        if (p > max_threads()) continue;
 
         /* Short warm-up so first-use runtime effects do not dominate. */
         double warm_s = 0.0, warm_p = 0.0;
@@ -277,15 +313,48 @@ static void experiment_amdahl(void) {
         double serial_med = median3(s1, s2, s3);
         double parallel_med = median3(p1, p2, p3);
 
-        printf("AMDAHL_REAL threads=%d serial=%.6f parallel=%.6f total=%.6f\n",
+        printf("AMDAHL_REAL threads=%d serial=%.9f parallel=%.9f total=%.9f\n",
                p, serial_med, parallel_med, total_med);
     }
 }
 
 
+
+/* Counter-based samples: index and seed identify each point, independent of threads.
+   SplitMix64 supplies deterministic teaching samples, not cryptographic randomness. */
+static uint64_t mix64(uint64_t z) {
+    z += UINT64_C(0x9e3779b97f4a7c15);
+    z = (z ^ (z >> 30)) * UINT64_C(0xbf58476d1ce4e5b9);
+    z = (z ^ (z >> 27)) * UINT64_C(0x94d049bb133111eb);
+    return z ^ (z >> 31);
+}
+static void experiment_montecarlo(void) {
+    long n = setting("M3_MC_N", 1000000, 100, 10000000);
+    uint64_t seed = (uint64_t)setting("M3_SEED", 42, 0, 1000000);
+    const int ps[] = {1,2,4,8,16};
+    long baseline = -1;
+    for (int j=0; j<5; ++j) {
+        int p=ps[j]; if (p > max_threads()) continue;
+        omp_set_num_threads(p);
+        long hits=0;
+        double t0=omp_get_wtime();
+        #pragma omp parallel for reduction(+:hits) schedule(static)
+        for (long i=0; i<n; ++i) {
+            double x=(mix64(2*(uint64_t)i + 2*seed) >> 11)*0x1.0p-53;
+            double y=(mix64(2*(uint64_t)i + 2*seed + 1) >> 11)*0x1.0p-53;
+            hits += x*x + y*y <= 1.0;
+        }
+        double elapsed=omp_get_wtime()-t0;
+        if (baseline < 0) baseline=hits;
+        if (hits != baseline) { fprintf(stderr,"Monte Carlo correctness failed\n"); exit(3); }
+        printf("MONTE_CARLO threads=%d n=%ld seed=%llu hits=%ld pi=%.9f seconds=%.9f\n",
+               p,n,(unsigned long long)seed,hits,4.0*hits/n,elapsed);
+    }
+}
+
 int main(int argc, char **argv) {
     if(argc != 2) {
-        fprintf(stderr,"usage: %s strong|weak|small|reduce|taskfarm|scan|stencil|search|amdahl\n",argv[0]);
+        fprintf(stderr,"usage: %s strong|weak|small|reduce|taskfarm|scan|stencil|search|amdahl|montecarlo\n",argv[0]);
         return 1;
     }
     if(strcmp(argv[1],"strong")==0) experiment_strong();
@@ -296,6 +365,7 @@ int main(int argc, char **argv) {
     else if(strcmp(argv[1],"scan")==0) experiment_scan();
     else if(strcmp(argv[1],"stencil")==0) experiment_stencil();
     else if(strcmp(argv[1],"search")==0) experiment_search();
+    else if(strcmp(argv[1],"montecarlo")==0) experiment_montecarlo();
     else if(strcmp(argv[1],"amdahl")==0) experiment_amdahl();
     else { fprintf(stderr,"unknown experiment: %s\n",argv[1]); return 1; }
     if(sink_value==1234567.0) fprintf(stderr,"ignore %.12f\n",sink_value);
