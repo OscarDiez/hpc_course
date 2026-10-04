@@ -76,7 +76,7 @@ static double other_work(uint64_t iters){
 
 int main(int argc, char **argv){
     const char *mode = (argc > 1) ? argv[1] : "bad";
-    const int n = (argc > 2) ? atoi(argv[2]) : 8192;
+    const int n = (argc > 2) ? atoi(argv[2]) : 4096;
     const int reps = (argc > 3) ? atoi(argv[3]) : 3;
 
     if(strcmp(mode,"bad") != 0 && strcmp(mode,"good") != 0){
@@ -84,6 +84,11 @@ int main(int argc, char **argv){
         return 1;
     }
 
+    if(n < 16 || n > 8192 || reps < 1 || reps > 32){
+        fprintf(stderr,"N must be 16..8192; reps must be 1..32\n"); return 2;
+    }
+    const unsigned long long other_iters = argc > 4 ? strtoull(argv[4],NULL,10) : 5000000ULL;
+    if(other_iters > 100000000ULL){fprintf(stderr,"other_iters too large\n");return 2;}
     size_t elems = (size_t)n * (size_t)n;
     size_t bytes = elems * sizeof(double);
     double *a = (double*)xmalloc_aligned(64, bytes);
@@ -105,14 +110,24 @@ int main(int argc, char **argv){
     double t_reduce = now_sec() - t0;
 
     t0 = now_sec();
-    double o = other_work(30000000ULL);
+    double o = other_work(other_iters);
     double t_other = now_sec() - t0;
 
     double total = now_sec() - total0;
     sink_value += c + r + o;
+    /* Independent reference for the repeating 1024-value initialization. */
+    size_t blocks=elems/1024, tail=elems%1024;
+    long double reference=(long double)elems + 1e-6L *
+        ((long double)blocks*1023*1024/2 + (long double)tail*(tail-1)/2);
+    if(!isfinite(c) || !isfinite(r) || !isfinite(o) ||
+       fabsl((long double)c-reference*reps)>1e-8L*fmaxl(1,reference*reps) ||
+       fabsl((long double)r-reference)>1e-8L*fmaxl(1,reference)){
+        fprintf(stderr,"VALIDATION_FAIL matrix_sum\n"); free(a); return 3;
+    }
+    printf("VALIDATION name=matrix_sum result=PASS\n");
 
-    printf("PROFILE_META mode=%s n=%d reps=%d matrix_MiB=%.1f\n",
-           mode,n,reps,bytes/1048576.0);
+    printf("PROFILE_META mode=%s n=%d reps=%d other_iters=%llu matrix_MiB=%.1f\n",
+           mode,n,reps,other_iters,bytes/1048576.0);
     printf("PROFILE_PHASE mode=%s phase=initialise seconds=%.6f\n",mode,t_init);
     printf("PROFILE_PHASE mode=%s phase=compute seconds=%.6f\n",mode,t_compute);
     printf("PROFILE_PHASE mode=%s phase=reduction seconds=%.6f\n",mode,t_reduce);
@@ -123,3 +138,4 @@ int main(int argc, char **argv){
     free(a);
     return 0;
 }
+
