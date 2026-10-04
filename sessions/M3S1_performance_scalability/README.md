@@ -27,7 +27,11 @@ Students predict, run, change one variable, and explain their own results.
 
 Start with predictions and submit the default CPU job. While queued, run the Amdahl/Gustafson models. Collect results separately, then rerun the analysis cells. Prioritize strong/weak scaling, serial phases, the rod/halo activity, and one student-selected controlled investigation. Pipeline, sorting, GPU execution and additional pattern investigations can be completed afterwards.
 
-`RUN_CLUSTER=False` and `RUN_GPU_EXTENSION=False` initially. Setting the CPU flag to True submits a job after configuration; the separate collection cell never submits. Recheck a queued job instead of submitting duplicates. A completion marker is required before loading measurements. Each completed CPU experiment saves a JSON record containing job ID, configuration and raw output.
+On SciTech, choose **Restart Kernel and Run All Cells**. `RUN_CLUSTER=True` by default. The submission cell persists the job ID, settings and source fingerprint; unchanged settings reuse the existing job even after a kernel restart. Change one `LAB_SETTINGS` value to request a new experiment after the previous job finishes. Use `REPEAT_SAME_EXPERIMENT=True` only for an intentional repeat or retry.
+
+The collection cell waits up to ten minutes, reports queue state and elapsed waiting, and requires real completion/timing records before the analysis cells continue. Failed jobs show their accounting state and output. Long queues stop execution at the collection cell with recovery instructions: rerun that cell later, then Run All Below. This stops Run All from silently producing pages of missing results. Completed experiments save their settings and raw output as JSON.
+
+`RUN_GPU_EXTENSION=False` remains the default. Without Slurm, the notebook explicitly enters model mode and skips cluster downloads. Matplotlib is optional: SVG plots render directly through IPython in Jupyter when Matplotlib is absent, including the heated rod activity.
 
 ## Editable experiment settings
 
@@ -35,7 +39,7 @@ The Section 2 settings cell exposes total items, work per item, work per thread,
 
 ## Resources and dependencies
 
-- Python 3 standard library is sufficient. Matplotlib is optional; tables work without it.
+- Python 3 standard library is sufficient. Matplotlib is optional; inline SVG charts work without it in Jupyter.
 - Models and small correctness activities work without Slurm. Real benchmarks never run automatically on a login/Jupyter node.
 - CPU job: one node, 16 CPUs, 4 GB, CPU partition, six-minute execution limit, `foss/2023b`.
 - MPI uses explicit job steps of up to eight ranks on that same node, one CPU per rank. It does not test inter-node network scaling.
@@ -50,3 +54,7 @@ The Section 2 settings cell exposes total items, work per item, work per thread,
 The revised notebook's code cells were executed in order without Slurm; measured OpenMP analysis paths were also exercised with locally generated output. All ten OpenMP modes compiled with GCC `-O3 -fopenmp -std=c11 -Wall -Wextra` and ran. Checks covered invariant Monte Carlo counts, map sums, block scan (including empty blocks), rod partition correctness, deliberate missing-halo error, BFS distances and recursive sorting. The MPI stencil's numerical partition logic was compared with a serial reference in a Python simulation.
 
 Actual SciTech Slurm scheduling, multi-rank MPI transport and optional GPU execution still require a run on SciTech. A successful local check is not a claim that those cluster services were tested.
+
+## Student workflow regression checks (v9)
+
+The exported student run exposed a disabled submission flag and missing graphs on a host without Matplotlib. The fix was tested with simulated scheduler responses for normal submission, reuse after kernel restart, changed settings, active-job protection, completed output, queue timeout, failed submission and failed job. The no-Matplotlib path was exercised and the generated SVG parsed. These tests verify orchestration and rendering logic; they do not constitute an actual SciTech Slurm/MPI run.
