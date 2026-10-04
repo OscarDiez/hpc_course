@@ -6,6 +6,18 @@
 #include <string.h>
 #include <math.h>
 #include <omp.h>
+#include <sys/mman.h>
+#include <errno.h>
+
+/* Student controls: bounded allocations; validation stays outside timed regions. */
+static long setting(const char *key,long fallback,long low,long high){
+    const char *v=getenv(key); if(!v) return fallback;
+    char *end; errno=0; long x=strtol(v,&end,10);
+    if(errno || *end || x<low || x>high){fprintf(stderr,"Invalid %s: expected %ld..%ld\n",key,low,high);exit(2);} return x;
+}
+static size_t array_n(size_t fallback){return (size_t)setting("M3_ARRAY_N",(long)fallback,1024,16777216);}
+static void require(int ok,const char *name){if(!ok){fprintf(stderr,"VALIDATION_FAIL %s\n",name);exit(3);}printf("VALIDATION name=%s result=PASS\n",name);}
+static int close_value(double a,double b){return fabs(a-b)<=1e-8*fmax(1.0,fabs(b));}
 
 static volatile double g_sink = 0.0;
 static double now_sec(void){ return omp_get_wtime(); }
@@ -25,7 +37,7 @@ static uint64_t xorshift64(uint64_t *s){
 }
 
 static void bench_latency(void){
-    const size_t n=4u*1024u*1024u;
+    const size_t n=array_n(4u*1024u*1024u);
     uint32_t *next=(uint32_t*)xaligned(64,n*sizeof(uint32_t));
     uint32_t *perm=(uint32_t*)xaligned(64,n*sizeof(uint32_t));
     for(size_t i=0;i<n;++i) perm[i]=(uint32_t)i;
@@ -42,6 +54,7 @@ static void bench_latency(void){
     for(int r=0;r<laps;++r)
         for(size_t i=0;i<n;++i) idx=next[idx];
     double t=now_sec()-t0;
+    require(idx==perm[0],"pointer_cycle");
     double accesses=(double)n*laps;
     printf("LATENCY n=%zu accesses=%.0f seconds=%.6f ns_per_access=%.2f final=%u\n",
            n,accesses,t,t*1e9/accesses,(unsigned)idx);
@@ -56,7 +69,7 @@ static void init_three(double *a,double *b,double *c,size_t n,int threads){
 }
 
 static void bench_stream(void){
-    const size_t n=8u*1024u*1024u;
+    const size_t n=array_n(8u*1024u*1024u);
     const int reps=6;
     double *a=(double*)xaligned(64,n*sizeof(double));
     double *b=(double*)xaligned(64,n*sizeof(double));
@@ -77,6 +90,8 @@ static void bench_stream(void){
         double t=now_sec()-t0;
         double bytes=3.0*(double)n*sizeof(double)*reps;
         double gb=bytes/t/1e9;
+        int ok=1; for(size_t i=0;i<n;++i) if(!close_value(a[i],b[i]+scalar*c[i]+1e-12*(reps-1))) ok=0;
+        require(ok,"stream_values");
         double check=a[0]+a[n/2]+a[n-1];
         printf("STREAM threads=%d n=%zu reps=%d seconds=%.6f useful_GB_s=%.2f checksum=%.6f\n",
                threads,n,reps,t,gb,check);
@@ -85,7 +100,7 @@ static void bench_stream(void){
 }
 
 static void bench_stride(void){
-    const size_t n=16u*1024u*1024u;
+    const size_t n=array_n(16u*1024u*1024u);
     double *a=(double*)xaligned(64,n*sizeof(double));
     for(size_t i=0;i<n;++i) a[i]=1.0+(double)(i&7)*1e-6;
     volatile double *v=a;
@@ -117,7 +132,7 @@ static double sum_col(volatile double *a,int n){
     return s;
 }
 static void bench_matrix(void){
-    const int n=4096;
+    const int n=(int)setting("M3_MATRIX_N",2048,16,4096);
     size_t elems=(size_t)n*n;
     double *a=(double*)xaligned(64,elems*sizeof(double));
     for(size_t i=0;i<elems;++i) a[i]=1.0+(double)(i&31)*1e-6;
@@ -127,6 +142,7 @@ static void bench_matrix(void){
         t0=now_sec(); sc=sum_col(a,n); double tc=now_sec()-t0;
         if(tr<br) br=tr; if(tc<bc) bc=tc;
     }
+    require(close_value(sr,sc),"row_column_sum");
     g_sink+=sr+sc;
     printf("MATRIX order=row n=%d seconds=%.6f checksum=%.6e\n",n,br,sr);
     printf("MATRIX order=column n=%d seconds=%.6f checksum=%.6e\n",n,bc,sc);
@@ -135,7 +151,7 @@ static void bench_matrix(void){
 }
 
 static void bench_fusion(void){
-    const size_t n=8u*1024u*1024u;
+    const size_t n=array_n(8u*1024u*1024u);
     const int reps=5;
     double *a=(double*)xaligned(64,n*sizeof(double));
     double *b=(double*)xaligned(64,n*sizeof(double));
@@ -153,6 +169,8 @@ static void bench_fusion(void){
     }
     double two=now_sec()-t0;
     double c1=out[0]+out[n/2]+out[n-1];
+    int two_ok=1;for(size_t i=0;i<n;++i)if(!close_value(out[i],(a[i]+b[i])*scale+1e-12*(reps-1)))two_ok=0;
+    require(two_ok,"two_pass_values");
     t0=now_sec();
     for(int r=0;r<reps;++r){
         #pragma omp parallel for schedule(static)
@@ -160,6 +178,8 @@ static void bench_fusion(void){
     }
     double fused=now_sec()-t0;
     double c2=out[0]+out[n/2]+out[n-1];
+    int ok=1; for(size_t i=0;i<n;++i) if(!close_value(out[i],(a[i]+b[i])*scale+1e-12*(reps-1))) ok=0;
+    require(ok && close_value(c1,c2),"fusion_values");
     printf("FUSION mode=two_pass n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,two,c1);
     printf("FUSION mode=fused n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,fused,c2);
     printf("FUSION speedup=%.2f\n",two/fused);
@@ -177,18 +197,22 @@ static void transpose_blocked(double *dst,const double *src,int n,int bs){
     }
 }
 static void bench_tiling(void){
-    const int n=4096;
+    const int n=(int)setting("M3_MATRIX_N",2048,16,4096);
     size_t elems=(size_t)n*n;
     double *src=(double*)xaligned(64,elems*sizeof(double));
     double *dst=(double*)xaligned(64,elems*sizeof(double));
     for(size_t i=0;i<elems;++i) src[i]=(double)(i&1023)*1e-3;
     double t0=now_sec(); transpose_naive(dst,src,n); double tn=now_sec()-t0;
     double c1=dst[0]+dst[elems/2]+dst[elems-1];
+    int naive_ok=1;for(int i=0;i<n;++i)for(int j=0;j<n;++j)if(dst[(size_t)j*n+i]!=src[(size_t)i*n+j])naive_ok=0;
+    require(naive_ok,"naive_transpose_all_cells");
     memset(dst,0,elems*sizeof(double));
-    t0=now_sec(); transpose_blocked(dst,src,n,32); double tb=now_sec()-t0;
+    t0=now_sec(); transpose_blocked(dst,src,n,(int)setting("M3_TILE",32,1,512)); double tb=now_sec()-t0;
     double c2=dst[0]+dst[elems/2]+dst[elems-1];
+    int ok=1; for(int i=0;i<n;++i) for(int j=0;j<n;++j) if(dst[(size_t)j*n+i]!=src[(size_t)i*n+j]) ok=0;
+    require(ok,"transpose_all_cells");
     printf("TILING workload=transpose mode=naive n=%d seconds=%.6f checksum=%.6f\n",n,tn,c1);
-    printf("TILING workload=transpose mode=blocked block=32 n=%d seconds=%.6f checksum=%.6f\n",n,tb,c2);
+    printf("TILING workload=transpose mode=blocked block=%ld n=%d seconds=%.6f checksum=%.6f\n",setting("M3_TILE",32,1,512),n,tb,c2);
     printf("TILING speedup=%.2f\n",tn/tb);
     free(src); free(dst);
 }
@@ -197,7 +221,7 @@ typedef struct { volatile long long value; } CounterPacked;
 typedef struct { volatile long long value; char pad[64-sizeof(long long)]; } CounterPadded;
 
 static void bench_false_sharing(void){
-    const long long iters=2000000LL;
+    const long long iters=setting("M3_COUNTER_ITERS",2000000,1000,20000000);
     int max_threads=omp_get_max_threads();
     int cand[]={1,2,4,8,16};
     for(size_t ci=0;ci<sizeof(cand)/sizeof(cand[0]);++ci){
@@ -221,6 +245,7 @@ static void bench_false_sharing(void){
         }
         double tq=now_sec()-t0;
         long long sq=0; for(int i=0;i<threads;++i) sq+=q[i].value;
+        require(sp==iters*threads && sq==iters*threads,"private_counters");
         printf("FALSE_SHARING threads=%d layout=packed seconds=%.6f total=%lld\n",threads,tp,sp);
         printf("FALSE_SHARING threads=%d layout=padded seconds=%.6f total=%lld\n",threads,tq,sq);
         printf("FALSE_SHARING threads=%d packed_over_padded=%.2f\n",threads,tp/tq);
@@ -234,7 +259,7 @@ typedef struct {
 } Particle;
 
 static void bench_aossoa(void){
-    const size_t n=4u*1024u*1024u;
+    const size_t n=array_n(4u*1024u*1024u);
     const int reps=4;
     Particle *p=(Particle*)xaligned(64,n*sizeof(Particle));
     double *x=(double*)xaligned(64,n*sizeof(double));
@@ -293,6 +318,8 @@ static void bench_aossoa(void){
     printf("AOSSOA kernel=multi_field layout=AoS n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,taf,ca);
     printf("AOSSOA kernel=multi_field layout=SoA n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,tsf,cs);
     printf("AOSSOA kernel=multi_field aos_over_soa=%.2f\n",taf/tsf);
+    int ok=1; for(size_t i=0;i<n;++i) if(!close_value(p[i].x,x[i])||!close_value(p[i].y,y[i])||!close_value(p[i].z,z[i])||!close_value(p[i].vx,vx[i])) ok=0;
+    require(ok,"particle_layout_equivalence");
     free(p); free(x); free(y); free(z); free(vx); free(vy); free(vz); free(mass);
 }
 
@@ -303,29 +330,32 @@ static double sum_parallel(const double *a,size_t n){
     return s;
 }
 static void bench_first_touch(void){
-    const size_t n=32u*1024u*1024u;
+    const size_t n=array_n(32u*1024u*1024u);
     const int reps=4;
-    double *a=(double*)xaligned(64,n*sizeof(double));
+    double *a=mmap(NULL,n*sizeof(double),PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0);
+    if(a==MAP_FAILED){perror("mmap");exit(2);}
     for(size_t i=0;i<n;++i) a[i]=1.0;
     double t0=now_sec(); double s1=0.0;
     for(int r=0;r<reps;++r) s1+=sum_parallel(a,n);
     double serial_touch=now_sec()-t0;
-    free(a);
+    munmap(a,n*sizeof(double));
 
-    a=(double*)xaligned(64,n*sizeof(double));
+    a=mmap(NULL,n*sizeof(double),PROT_READ|PROT_WRITE,MAP_PRIVATE|MAP_ANONYMOUS,-1,0);
+    if(a==MAP_FAILED){perror("mmap");exit(2);}
     #pragma omp parallel for schedule(static)
     for(size_t i=0;i<n;++i) a[i]=1.0;
     t0=now_sec(); double s2=0.0;
     for(int r=0;r<reps;++r) s2+=sum_parallel(a,n);
     double parallel_touch=now_sec()-t0;
+    require(close_value(s1,(double)n*reps) && close_value(s2,s1),"first_touch_sums");
     printf("FIRST_TOUCH init=serial n=%zu reps=%d seconds=%.6f checksum=%.6e\n",n,reps,serial_touch,s1);
     printf("FIRST_TOUCH init=parallel n=%zu reps=%d seconds=%.6f checksum=%.6e\n",n,reps,parallel_touch,s2);
     printf("FIRST_TOUCH serial_over_parallel=%.2f\n",serial_touch/parallel_touch);
-    free(a);
+    munmap(a,n*sizeof(double));
 }
 
 static void bench_prefetch(void){
-    const size_t n=16u*1024u*1024u;
+    const size_t n=array_n(16u*1024u*1024u);
     const int reps=3;
     double *a=(double*)xaligned(64,n*sizeof(double));
     for(size_t i=0;i<n;++i) a[i]=1.0+(i&15)*1e-6;
@@ -333,13 +363,14 @@ static void bench_prefetch(void){
     double t0=now_sec();
     for(int r=0;r<reps;++r) for(size_t i=0;i<n;++i) sum+=a[i];
     double tn=now_sec()-t0; double c1=sum;
-    sum=0.0; const size_t d=64;
+    sum=0.0; const size_t d=(size_t)setting("M3_PREFETCH_DISTANCE",64,1,4096);
     t0=now_sec();
     for(int r=0;r<reps;++r) for(size_t i=0;i<n;++i){
         if(i+d<n) __builtin_prefetch(&a[i+d],0,1);
         sum+=a[i];
     }
     double tp=now_sec()-t0; double c2=sum;
+    require(close_value(c1,c2),"prefetch_sum");
     printf("PREFETCH mode=none n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,tn,c1);
     printf("PREFETCH mode=software distance=%zu n=%zu reps=%d seconds=%.6f checksum=%.6f\n",d,n,reps,tp,c2);
     printf("PREFETCH speedup_none_over_software=%.2f\n",tn/tp);
@@ -347,7 +378,7 @@ static void bench_prefetch(void){
 }
 
 static void bench_sparse(void){
-    const int n=1000000, per=5, nnz=n*per;
+    const int n=(int)setting("M3_SPARSE_N",200000,16,1000000), per=(int)setting("M3_NNZ_PER_ROW",5,1,32), nnz=n*per;
     double *val=(double*)xaligned(64,(size_t)nnz*sizeof(double));
     int *col=(int*)xaligned(64,(size_t)nnz*sizeof(int));
     int *row=(int*)xaligned(64,(size_t)(n+1)*sizeof(int));
@@ -372,6 +403,8 @@ static void bench_sparse(void){
         y[i]=s;
     }
     double t=now_sec()-t0;
+    int ok=1; for(int i=0;i<n;++i){double ref=0;for(int j=row[i];j<row[i+1];++j)ref+=val[j]*x[col[j]];if(!close_value(y[i],ref))ok=0;}
+    require(ok,"csr_all_rows");
     double csr=(double)nnz*(sizeof(double)+sizeof(int))+(double)(n+1)*sizeof(int);
     double dense=(double)n*(double)n*sizeof(double);
     double check=y[0]+y[n/2]+y[n-1];
@@ -399,7 +432,7 @@ static double add_unrolled4(const double *a,const double *b,double *c,size_t n){
     return now_sec()-t0;
 }
 static void bench_unroll(void){
-    const size_t n=16u*1024u*1024u;
+    const size_t n=array_n(16u*1024u*1024u);
     const int reps=5;
     double *a=(double*)xaligned(64,n*sizeof(double));
     double *b=(double*)xaligned(64,n*sizeof(double));
@@ -408,8 +441,12 @@ static void bench_unroll(void){
     double plain=0.0,unrolled=0.0;
     for(int r=0;r<reps;++r) plain+=add_plain(a,b,out,n);
     double c1=out[0]+out[n/2]+out[n-1];
+    int plain_ok=1;for(size_t i=0;i<n;++i)if(out[i]!=a[i]+b[i])plain_ok=0;
+    require(plain_ok,"plain_vector_add");
     for(int r=0;r<reps;++r) unrolled+=add_unrolled4(a,b,out,n);
     double c2=out[0]+out[n/2]+out[n-1];
+    int ok=1;for(size_t i=0;i<n;++i)if(out[i]!=a[i]+b[i])ok=0;
+    require(ok && close_value(c1,c2),"unroll_with_tail");
     printf("UNROLL mode=plain n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,plain,c1);
     printf("UNROLL mode=unrolled4 n=%zu reps=%d seconds=%.6f checksum=%.6f\n",n,reps,unrolled,c2);
     printf("UNROLL plain_over_unrolled=%.2f\n",plain/unrolled);
@@ -421,6 +458,8 @@ static void usage(const char *p){
 }
 int main(int argc,char **argv){
     if(argc<2){ usage(argv[0]); return 1; }
+    omp_set_dynamic(0);
+    omp_set_num_threads((int)setting("M3_THREADS",omp_get_max_threads(),1,16));
     const char *m=argv[1];
     if(!strcmp(m,"latency")) bench_latency();
     else if(!strcmp(m,"stream")) bench_stream();
@@ -432,7 +471,8 @@ int main(int argc,char **argv){
     else if(!strcmp(m,"fusion")) bench_fusion();
     else if(!strcmp(m,"first_touch")) bench_first_touch();
     else if(!strcmp(m,"prefetch")) bench_prefetch();
-    else if(!strcmp(m,"sparse")) bench_sparse();\n    else if(!strcmp(m,"unroll")) bench_unroll();
+    else if(!strcmp(m,"sparse")) bench_sparse();
+    else if(!strcmp(m,"unroll")) bench_unroll();
     else if(!strcmp(m,"all")){
         bench_latency(); bench_stream(); bench_stride(); bench_matrix();
         bench_false_sharing(); bench_aossoa(); bench_tiling(); bench_fusion();
