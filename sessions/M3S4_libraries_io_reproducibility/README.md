@@ -1,6 +1,6 @@
 # M3S4 — Libraries, I/O and reproducible workflows
 
-Build: **M3S4-2026-10-06-v7**. The notebook embeds all six accompanying source files from `session_demos/14_libraries_io`; downloading the notebook requires no extra source downloads.
+Build: **M3S4-2026-10-06-v8**. The notebook embeds all six accompanying source files from `session_demos/14_libraries_io`; downloading the notebook requires no extra source downloads.
 
 ## Class route
 
@@ -32,3 +32,10 @@ The compute/I/O fraction is a mathematical model. Containers, workflow tools, sp
 ## Student changes
 
 Start with the default run. Predict an outcome, change one setting, rerun setup onwards, save the run ID and compare. Useful first changes: double one BLAS size, set BLAS threads to 2, set rod heating to zero, enable gzip, change checkpoint interval, or increase file count while discussing whether total bytes also changed. Retain the manifest with submitted evidence.
+
+
+## v8 runtime dependency fix
+
+The C HDF5 compiler and executable now receive an explicit child-process library environment from existing LD_LIBRARY_PATH/LIBRARY_PATH and the currently loaded EasyBuild module roots (including Szip/libaec), supplemented by dependency -L paths reported by the selected HDF5 wrapper. This handles indirect compression dependencies that an executable RUNPATH alone may not resolve. No system installation or package download is required on SciTech. The HDF5 report records runtime directories and loader dependency resolution; unresolved dependencies remain FAIL with actionable diagnostics.
+
+Validation: reproduced the exact libsz.so.2 runtime failure using a real HDF5 library outside system paths, then passed full/slice readback with only loaded-module roots supplying the missing Szip/libaec paths. Default and edited/gzip C cases passed. Fresh SciTech v8 execution remains to be confirmed.

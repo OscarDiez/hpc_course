@@ -1,9 +1,9 @@
 """M3S4 measured exercises. All files stay inside a unique, user-owned run directory."""
 from pathlib import Path
 import argparse, ctypes as ct, ctypes.util, hashlib, json, math, os, platform
-import shutil, statistics, subprocess, sys, tempfile, time, uuid
+import shlex, shutil, statistics, subprocess, sys, tempfile, time, uuid
 import numpy as np
-BUILD = 'M3S4-2026-10-06-v7'
+BUILD = 'M3S4-2026-10-06-v8'
 DEFAULTS = dict(sizes=[128,256,512,1024], repeats=5, fft_batch=500, seed=2026, input_seed=12345,
                 files=200, bytes_per_file=4096, fsync=False, heat_points=128,
                 heat_steps=100, checkpoint_interval=10, failure_step=57,
@@ -20,8 +20,8 @@ def sha(path):
 def save(path,data):
     tmp=Path(str(path)+'.tmp'); tmp.write_text(json.dumps(data,indent=2)); tmp.replace(path)
 
-def checked(argv,cwd,timeout=120):
-    p=subprocess.run([str(x) for x in argv],cwd=cwd,text=True,capture_output=True,timeout=timeout)
+def checked(argv,cwd,timeout=120,env=None):
+    p=subprocess.run([str(x) for x in argv],cwd=cwd,text=True,capture_output=True,timeout=timeout,env=env)
     if p.returncode: raise RuntimeError(f'{argv}: rc={p.returncode}\n{p.stdout}\n{p.stderr}')
     return p.stdout
 
@@ -299,10 +299,31 @@ def lapack_lab(s,root):
                 singular_info=singular,note='Steady rod: -T double-prime = source, unit length, fixed end temperatures. Both dense solvers use partial pivoting. DGESV uses 32-bit LAPACK integers, column-major A; INFO=0 success, >0 singular, <0 invalid argument. Copies outside timing. A tridiagonal solver would exploit this rod structure better than dense DGESV; dense solve is for learning the library interface.')
 
 
+def hdf5_runtime_environment():
+    # Compiler wrappers can find HDF5 while the dynamic loader misses its
+    # indirect Szip/libaec dependencies. A RUNPATH on the executable alone
+    # does not resolve every dependency of libhdf5. Use only directories
+    # supplied by the current loaded module/toolchain environment.
+    env=os.environ.copy();directories=[]
+    for variable in ['LD_LIBRARY_PATH','LIBRARY_PATH']:
+        directories += [v for v in env.get(variable,'').split(os.pathsep) if v]
+    # Prefer the selected HDF5 and compression roots before other loaded roots.
+    roots=['EBROOTHDF5','EBROOTSZIP','EBROOTLIBAEC']
+    roots += sorted(k for k in env if k.startswith('EBROOT') and k not in roots)
+    for key in roots:
+        if env.get(key):
+            for folder in ['lib','lib64']:
+                candidate=Path(env[key])/folder
+                if candidate.is_dir(): directories.append(str(candidate))
+    directories=list(dict.fromkeys(v for v in directories if Path(v).is_dir()))
+    if directories: env['LD_LIBRARY_PATH']=os.pathsep.join(directories)
+    return env,directories
+
 def hdf5_lab(s,root):
     try: import h5py
     except ImportError:
         # Parallel builds commonly provide h5pcc instead of h5cc.
+        runtime_env,runtime_dirs=hdf5_runtime_environment()
         hdfroot=Path(os.environ['EBROOTHDF5']) if os.getenv('EBROOTHDF5') else None
         wrappers=[shutil.which('h5cc'),shutil.which('h5pcc')]
         if hdfroot: wrappers += [str(hdfroot/'bin'/name) for name in ['h5cc','h5pcc'] if (hdfroot/'bin'/name).is_file()]
@@ -318,14 +339,31 @@ def hdf5_lab(s,root):
         if not attempts: return dict(status='SKIPPED',reason='No h5py, h5cc/h5pcc or usable EBROOTHDF5 compiler path')
         errors=[]
         for cmd in attempts:
-            try: checked(cmd,root);break
+            # Some wrapper installations record dependency -L paths without
+            # exporting every dependency as an EasyBuild module variable.
+            if Path(cmd[0]).name in ['h5cc','h5pcc']:
+                show=subprocess.run([cmd[0],'-show'],cwd=root,capture_output=True,text=True,env=runtime_env,timeout=30)
+                if show.returncode==0:
+                    flags=shlex.split(show.stdout);extra=[]
+                    for i,flag in enumerate(flags):
+                        if flag=='-L' and i+1<len(flags): extra.append(flags[i+1])
+                        elif flag.startswith('-L') and len(flag)>2: extra.append(flag[2:])
+                    runtime_dirs=list(dict.fromkeys(runtime_dirs+[d for d in extra if Path(d).is_dir()]))
+                    if runtime_dirs: runtime_env['LD_LIBRARY_PATH']=os.pathsep.join(runtime_dirs)
+            try: checked(cmd,root,env=runtime_env);break
             except RuntimeError as e: errors.append(str(e))
         else: raise RuntimeError('HDF5 found but compilation failed: '+ '\n'.join(errors))
         args=[exe,*map(str,s['weather_shape']),str(s['weather_slice']),'1' if s['compression']=='gzip' else '0']
-        result=json.loads(checked(args,root));assert result['passed']
+        loader=None
+        if shutil.which('ldd'):
+            loader=checked([shutil.which('ldd'),exe],root,env=runtime_env)
+            if 'not found' in loader:
+                raise RuntimeError('HDF5 runtime dependencies missing after module path repair:\n'+loader+
+                                   '\nLoad the matching Szip/libaec module for the HDF5 toolchain; runtime dirs: '+str(runtime_dirs))
+        result=json.loads(checked(args,root,env=runtime_env));assert result['passed']
         assert result['shape']==s['weather_shape'] and result['slice_time']==s['weather_slice']
         return dict(status='PASS',backend='C HDF5 serial writer',result=result,command=cmd,run_command=args,
-                    bytes=(root/'weather.h5').stat().st_size,
+                    bytes=(root/'weather.h5').stat().st_size,runtime_library_dirs=runtime_dirs,loader_dependencies=loader,
                     note='Editable shape, one-plane chunks, units, time axis, compression and hyperslab. Full values and time-axis readback verified. h5pcc selects a parallel-capable library; this program still uses one writer.')
     shape=tuple(s['weather_shape']); t,y,x=np.indices(shape); data=273.15+t+0.1*y+0.01*x
     path=root/'weather.h5'; start=time.perf_counter()
@@ -445,3 +483,4 @@ if __name__=='__main__':
     if args.replay: print(json.dumps(replay(args.replay),indent=2))
     elif args.config and args.out: sys.exit(main(args.config,args.out))
     else: parser.error('--config and --out required, or --replay')
+
