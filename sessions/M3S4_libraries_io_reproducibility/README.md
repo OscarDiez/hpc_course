@@ -1,6 +1,6 @@
 # M3S4 — Libraries, I/O and reproducible workflows
 
-Build: **M3S4-2026-10-06-v8**. The notebook embeds all six accompanying source files from `session_demos/14_libraries_io`; downloading the notebook requires no extra source downloads.
+Build: **M3S4-2026-10-06-v9**. The notebook embeds all six accompanying source files from `session_demos/14_libraries_io`; downloading the notebook requires no extra source downloads.
 
 ## Class route
 
@@ -39,3 +39,9 @@ Start with the default run. Predict an outcome, change one setting, rerun setup 
 The C HDF5 compiler and executable now receive an explicit child-process library environment from existing LD_LIBRARY_PATH/LIBRARY_PATH and the currently loaded EasyBuild module roots (including Szip/libaec), supplemented by dependency -L paths reported by the selected HDF5 wrapper. This handles indirect compression dependencies that an executable RUNPATH alone may not resolve. No system installation or package download is required on SciTech. The HDF5 report records runtime directories and loader dependency resolution; unresolved dependencies remain FAIL with actionable diagnostics.
 
 Validation: reproduced the exact libsz.so.2 runtime failure using a real HDF5 library outside system paths, then passed full/slice readback with only loaded-module roots supplying the missing Szip/libaec paths. Default and edited/gzip C cases passed. Fresh SciTech v8 execution remains to be confirmed.
+
+## v9 FFTW loading and stale-run checks
+
+FFTW discovery now tries absolute shared-library paths from the selected EBROOTFFTW module before generic SONAME lookup; all discovered load failures remain visible. Collection prints both notebook and report builds and rejects stale report builds or source/settings fingerprints. Recollecting an old run does not execute a corrected source version.
+
+Validation: deliberately inaccessible FFTW SONAME reproduced a loader failure, while the selected module absolute path passed DFT and NumPy spectrum checks for sizes 128 and 250. All 19 notebook cells also ran with actual C HDF5 including repaired compression paths; old report builds and stale RUN_STATE fingerprints were rejected. Fresh SciTech v9 execution remains to be confirmed.

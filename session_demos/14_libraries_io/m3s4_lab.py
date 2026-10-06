@@ -3,7 +3,7 @@ from pathlib import Path
 import argparse, ctypes as ct, ctypes.util, hashlib, json, math, os, platform
 import shlex, shutil, statistics, subprocess, sys, tempfile, time, uuid
 import numpy as np
-BUILD = 'M3S4-2026-10-06-v8'
+BUILD = 'M3S4-2026-10-06-v9'
 DEFAULTS = dict(sizes=[128,256,512,1024], repeats=5, fft_batch=500, seed=2026, input_seed=12345,
                 files=200, bytes_per_file=4096, fsync=False, heat_points=128,
                 heat_steps=100, checkpoint_interval=10, failure_step=57,
@@ -50,13 +50,28 @@ def summary(samples):
 
 def fft_lab(s,root):
     # Both direct DFT and FFTW execute compiled code through ctypes. Planning is separate.
-    compiler=shutil.which('gcc'); libname=ctypes.util.find_library('fftw3') or ('libfftw3.so' if os.getenv('EBROOTFFTW') else None)
-    if not compiler or not libname: return dict(status='SKIPPED',reason='gcc or FFTW3 shared library unavailable')
+    compiler=shutil.which('gcc')
+    if not compiler: return dict(status='SKIPPED',reason='gcc unavailable')
+    # find_library may return a SONAME from linker/compiler metadata even when
+    # the running Python process cannot resolve it. Prefer module absolute paths.
+    candidates=library_candidates('fftw3','EBROOTFFTW')
+    for directory in os.getenv('LD_LIBRARY_PATH','').split(os.pathsep):
+        if directory:
+            candidates += [str(v) for v in sorted(Path(directory).glob('libfftw3.so*'))]
+    candidates=list(dict.fromkeys(candidates))
+    if not candidates: return dict(status='SKIPPED',reason='No FFTW3 shared library discovered')
+    errors=[];fftw=None;libname=None
+    for candidate in candidates:
+        try:
+            fftw=ct.CDLL(candidate);libname=candidate;break
+        except OSError as e: errors.append(str(e))
+    if fftw is None:
+        raise RuntimeError('FFTW discovered but not loadable. EBROOTFFTW='+str(os.getenv('EBROOTFFTW'))+
+                           '; candidates='+str(candidates)+'; errors='+str(errors))
     source=Path(__file__).with_name('m3s4_dft.c'); binary=root/'direct_dft.so'
     command=[compiler,'-O3','-Wall','-Wextra','-Werror','-fPIC','-shared',str(source),'-lm','-o',str(binary)]
     checked(command,root)
     direct=ct.CDLL(str(binary)); direct.direct_dft.argtypes=[ct.c_int,ct.c_void_p,ct.c_void_p]; direct.direct_dft.restype=None
-    fftw=ct.CDLL(libname)
     fftw.fftw_plan_dft_r2c_1d.argtypes=[ct.c_int,ct.c_void_p,ct.c_void_p,ct.c_uint]; fftw.fftw_plan_dft_r2c_1d.restype=ct.c_void_p
     fftw.fftw_execute.argtypes=[ct.c_void_p]; fftw.fftw_execute.restype=None
     fftw.fftw_destroy_plan.argtypes=[ct.c_void_p]; fftw.fftw_destroy_plan.restype=None
@@ -483,4 +498,5 @@ if __name__=='__main__':
     if args.replay: print(json.dumps(replay(args.replay),indent=2))
     elif args.config and args.out: sys.exit(main(args.config,args.out))
     else: parser.error('--config and --out required, or --replay')
+
 
