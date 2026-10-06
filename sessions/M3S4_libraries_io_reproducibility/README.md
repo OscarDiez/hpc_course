@@ -45,3 +45,11 @@ Validation: reproduced the exact libsz.so.2 runtime failure using a real HDF5 li
 FFTW discovery now tries absolute shared-library paths from the selected EBROOTFFTW module before generic SONAME lookup; all discovered load failures remain visible. Collection prints both notebook and report builds and rejects stale report builds or source/settings fingerprints. Recollecting an old run does not execute a corrected source version.
 
 Validation: deliberately inaccessible FFTW SONAME reproduced a loader failure, while the selected module absolute path passed DFT and NumPy spectrum checks for sizes 128 and 250. All 19 notebook cells also ran with actual C HDF5 including repaired compression paths; old report builds and stale RUN_STATE fingerprints were rejected. Fresh SciTech v9 execution remains to be confirmed.
+
+## Student-facing activities
+
+Each activity states the scientific situation, what actually executes, what result to inspect, one setting to change, and the concept to explain. Setup runs the measured worker; numbered activity cells display saved evidence. Replay/tamper cells explicitly start new verification processes. Discussion/model sections are labeled as such.
+
+Checkpoint presentation shows the three-process reference/failure/restart sequence, a saved-field plot, saved/lost/restarted work, and a clearly labeled prediction table. The failing step is retried in addition to the reported lost previously completed steps. BLAS/FFTW/LAPACK/I/O use labeled timing and correctness tables. HDF5 plots identify whether data came from direct file reading or the C-verified expected slice. MPI shows actual rank ownership and launch evidence. Detailed source/raw reports remain expandable. The one-change comparison displays relevant measured quantities from two reports and checks matching scientific source hashes.
+
+Validation: all 19 code cells executed locally, measured checkpoint interval 10→5 comparison confirmed saved step 50→55 and lost completed work 6→1, checkpoint plot inspected, and ownership display checked against the user's actual four-rank SciTech result. Scientific worker/source fingerprints remain v9 and unchanged. User's v9 SciTech export reported all eight experiments PASS and no skips; this presentation revision can reuse that valid measured run.
