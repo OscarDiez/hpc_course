@@ -54,3 +54,35 @@ For each run the C program builds a **serial reference** for the same grid/steps
 - **Do not merge this draft PR until a real runtime run has passed or the limitations are explicitly accepted.**
 
 The **old Advanced MPI notebook created earlier in this draft PR was based on an outdated syllabus and is superseded**. It must not be used for the 2026–27 lecture. The 2026–27 student AI policy applies to assessed submissions; providing teacher-authored demonstration code does not authorize AI-generated assessed work.
+
+
+## New slide-linked mini demos (43-cell enhanced notebook)
+
+The main heat-diffusion solver remains the **same single coherent scientific application**. Students now have small, independent demos for concepts that would otherwise remain abstract.
+
+| Demo | Close connection to lecture | Real code | Expected observation | Evidence source |
+|---|---|---|---|---|
+| A. Heat spreading | Stencil update, old/new data dependence | Python | Hotspot spreads; outer boundary stays fixed | LOCAL computation and optional LOCAL plot |
+| B. Row ownership/halo | MPI data decomposition and neighbor messages | Python | Rank ownership map and exact halo partners | LOCAL logical model (not MPI execution) |
+| C. Four core layouts | MPI-only, OpenMP-only, MPI+OpenMP | Python | 1×1, 4×1, 1×4 and 2×2 worker diagrams | LOCAL configuration illustration |
+| D. Lost update | Race condition, synchronization, reduction | Python | Deliberate interleaving produces 1 instead of 2 | LOCAL deterministic teaching illustration, **not** a real data race |
+| E. MPI ranks + collective | Rank ID, `MPI_Sendrecv`, `MPI_Allreduce` | **Real C/MPI** | Four ranks contribute 1+2+3+4 = 10; each observes a neighbor's value | Actual `srun` log required |
+| F. OpenMP workers + reduction | `parallel`, `for`, `reduction` | **Real C/OpenMP** | Two threads share eight iterations; sum = 36 | Actual `srun` log required |
+| G. Cost and overhead | Why strong scaling can fail | Python | Illustrative computed values for 1, 2 and 4 ranks | **MODEL**, arbitrary units, never measured seconds |
+| H. Five MCQs | Misconceptions and decision-making | Markdown | Explain each answer before revealing | Student discussion, not code execution |
+
+**Real C mini programs E/F are compiled and executed as two additional small steps inside the same existing bounded Slurm allocation.** This is not another submitted job. The notebook checks `MINI_RESULT` **and** matching `MINI_END` before it can label these demos PASS.
+
+### Teaching selection (80-minute target)
+Start with A and B for the problem and decomposition, demonstrate C and D briefly, then use E/F to show rank/thread identities, and run the original heat-solver cases S/M/O/H/B as time permits. Close with one bottleneck comparison and the MCQs. The cost-model G and detailed timing explorations are optional self-study. Avoid attempting every extension in the live session.
+
+### Local validation performed during authoring
+- Python reference heat solver, three snapshots and fixed boundaries: **PASS** (local).
+- Four-rank ownership covers all interior rows and identifies boundaries: **PASS** (local).
+- Deliberate lost-update sequence and safe mathematical sum: **PASS** (local).
+- Cost model internal consistency: **PASS** (local; it is not physical performance evidence).
+- OpenMP C mini program: **COMPILED and PASS locally with GCC -fopenmp**; exactly two threads and numerical sum 36. This is **not a SciTech run**.
+- Uploaded HTML snapshot from an IE environment showed `mpicc`, `sbatch` and `srun` commands visible, and Python reference computation completed. That snapshot kept `RUN_CLUSTER=False`, so **no actual MPI/Slurm execution evidence** was present in it.
+- **Still NOT RUN:** MPI mini program, MPI+OpenMP heat solver modes, actual SciTech module/partition and Slurm binding. Do not merge before runtime acceptance.
+
+**Performance caveat:** First-time OpenMP startup and very small grid sizes can dominate timings. The notebook does not promise speedup or extrapolate a single-node classroom result to multiple nodes.
