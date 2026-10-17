@@ -142,3 +142,10 @@ Current teaching notebooks are organized by **Module → Session** using the can
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M2S5_async_parallel_app/M2S5_async_parallel_app.ipynb`
 
 > Legacy notebooks remain in `chapters_examples/` and `x_archive/`. New 2026 notebooks use `sessions/MxSy_topic/`.
+### Module 5
+
+- **M5.S3 - Containers, portability and reproducibility in HPC (Session 23)**
+  - [Session guide](sessions/M5S3_containers_portability_reproducibility/)
+  - [Interactive notebook](sessions/M5S3_containers_portability_reproducibility/M5S3_containers_portability_reproducibility.ipynb)
+  - Raw URL for JupyterLab **File -> Open from URL...**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M5S3_containers_portability_reproducibility/M5S3_containers_portability_reproducibility.ipynb`
