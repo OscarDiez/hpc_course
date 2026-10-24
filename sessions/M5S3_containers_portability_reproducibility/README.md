@@ -24,7 +24,7 @@ After merge, the corresponding `main` URL can be used. Until then the teaching b
 | E1 · Dependency drift | Can unchanged app code give a different answer? | Two real Python child processes using small local teaching libraries | Celsius/Fahrenheit semantic difference detected |
 | E2 · Process environment | Which interpreter and variables does a child use? | Process environment, real empty venv, read-only module probe | Child inheritance; parent unchanged; separate venv prefix |
 | E3 · Recorded temperatures | What changes when the threshold changes? | 1,000-row CSV; Python mean/fraction; serial C and two OpenMP threads in the CPU batch | Input/code identities; repeat agreement; cross-language tolerance |
-| E4 · Container boundary | Can a prepared SIF repeat the same calculation? | Optional actual Apptainer run in that same CPU batch | Same code/input hashes and numerical agreement; otherwise SKIPPED |
+| E4 · Container boundary | Can a prepared SIF repeat the same calculation? | Actual Apptainer examples enabled by default in that same CPU batch; use existing local images | Same code/input hashes and numerical agreement; otherwise SKIPPED |
 | E5 · Workflow and handover | Can another process replay and reject changed input? | Cache, manifest, independent process, damaged copy, handover ZIP | COMPUTE/REUSE/COMPUTE; replay PASS; intentional integrity failure detected |
 
 Each uses problem → prediction → code → run → result → explanation → one-parameter experiment → takeaway. Six MCQs provide feedback after choosing A–D. Python prints a result table and an SVG chart from computed fractions; no plotting package is required.
@@ -44,16 +44,43 @@ Read [cluster guide](../../cluster/README.md) and [infrastructure validation not
 - Rerun the **collection cell**, not submission, while queued. A report is accepted only with the matching job/run ID and completion marker. Inspect `.out`/`.err`; do not silently relabel failures.
 - No GPU or MPI computation is needed or submitted. Their host compatibility requirements are conceptual reference material only.
 
-## Optional container comparison
+## Existing cluster containers: default classroom route
 
-Use a prepared trusted Python 3 SIF with a compatible architecture and standard-library `csv`, `json`, `math`. Set `IMAGE` to its absolute shared path and `RUN_CONTAINER=True`, then rerun preparation/submission for a new settings fingerprint. No image location is assumed; the old sponsor paths and `gpu-node` partition examples are not SciTech defaults.
+`RUN_CONTAINER=True` now makes the CPU batch **launch existing images**, rather than leaving the main topic disabled. No registry pull, build, pip/conda installation, GPU request or MPI run is needed.
 
-Missing runtime/image is SKIPPED. A runtime or numerical failure after attempting the calculation is FAIL. `--cleanenv --containall --bind RUN_DIR:/work --pwd /work` makes the path mapping explicit. Image hashes establish identity, not trust. The example definition uses a mutable teaching tag; pin and archive construction inputs and a trusted SIF before a lasting release.
+1. Leave `IMAGE=""` to inspect `/data/software/containers` and the home-relative historical fallback `~/projects/def-sponsor00/shared/images`. The current shared CUDA image is documented in Practice 2, but earlier validation showed it was not accessible from every job. The old sponsor path also belongs to an earlier cluster setup. Both are checked at execution time, never assumed to exist.
+2. If the course images are stored elsewhere, add that instructor-approved directory to `IMAGE_DIRS`, or set the absolute `IMAGE` path (also accepted through the `M5S3_IMAGE` environment variable).
+3. Run **E4a inventory**, **preparation**, then **submission**. The existing guard prevents duplicate or overlapping unverified jobs. A previous completed native run has a different fingerprint and is not misrepresented as this new container run.
+4. In the allocation, the worker checks compute-node visibility and tries up to four readable candidates. It probes `python3`, then `python`, for Python 3.9+ and standard-library support. The first compatible existing image is selected, and its full SHA-256/runtime version are recorded.
+5. Rerun **collection** while queued. The actual report prints these cases:
+
+| Case | Actual work and check |
+|---|---|
+| `container_image` | Launch Python inside the image, record its identity and runtime, enforce an optional expected SHA-256 |
+| `container_environment` | Compare Python/executable metadata and the shared kernel/machine with the compute host |
+| `container_bind` | Read the frozen host CSV through `/work`, write JSON inside the process, verify its contents from the host |
+| `container` | Run unchanged `analysis.py`; require matching input/code hashes, threshold/count and numerical agreement |
+| `container_numpy` | If NumPy is already installed, solve a 3×3 stiffness system, independently check residuals, double the load and verify doubled displacement |
+
+The `examples/` directory contains exact readable mirrors of the four added Python payload/helper sources. The notebook embeds them, so students still need only the notebook file. The worker uses `--cleanenv --containall`, an explicit run-directory bind and two-thread OpenMP/BLAS limits. It uses the image's `python` when `python3` is absent.
+
+**One-parameter task:** change `LOAD_SCALE` from 1 to 0.5 after the previous job finishes; predict half the displacement. Alternatively change only `THRESHOLD_C` to 22. Do not switch the image and scientific parameter simultaneously.
+
+After a successful AUTO run, copy the report's path into `IMAGE` and its SHA-256 into `EXPECTED_IMAGE_SHA256` to pin a rerun. A checksum establishes byte identity, not trust in the image's origin.
+
+No runtime or readable image means SKIPPED with diagnostics. Readable images whose attempted execution is incompatible produce FAIL with the attempted commands' diagnostics. Missing NumPy skips only that additional example. No completion report means NOT RUN/queued, never an invented success.
 
 ## Evidence boundary
 
 **Locally validated:** all 20 Python code cells, venv, dependency and parameter changes, generated GCC serial C and OpenMP (actual two threads), cache, independent replay, damaged-input rejection, replay from an extracted ZIP, and Bash syntax. See VALIDATION.md for exact values.
 
-**Not validated on SciTech in this revision:** scheduler acceptance, shared-path visibility, actual EESSI/module setup, compute-node C/OpenMP run, and Apptainer execution. Spack concretization/install and actual workflow engines are NOT RUN. The clean student notebook contains no saved execution outputs. The author ran Python cells sequentially using a validation harness, not an interactive Jupyter kernel.
+**Instructor-provided SciTech evidence for the prior v2 notebook:** job **24608**, host **julia**, `foss/2023b` loaded, GCC **13.2.0**; native Python, serial C and actual two-thread OpenMP **PASS**. The container case was **SKIPPED** because the old default was disabled. See `scitech_native_evidence.json`.
+
+**New v3 container examples:** local payload and orchestration checks passed, but actual Apptainer execution and the new automatic image route still require a live SciTech report. No simulated CLI test is presented as a container measurement. Spack concretization/install and actual workflow engines are NOT RUN. The clean student notebook contains no saved execution outputs. The author ran Python cells sequentially using a validation harness, not an interactive Jupyter kernel.
 
 This revises the existing M5S3 notebook rather than replacing the legacy hybrid example at `chapters_examples/23.M5.S3.Hybrid_Computing(5_3).ipynb`.
+
+
+## Maintainer validation
+
+Run `python3 validate_notebook.py` locally to check syntax, all notebook Python cells, native C/OpenMP, inventory, pinned-hash rejection, unavailable/incompatible images, candidate fallback, bind outputs and replay. CLI orchestration tests use an explicitly labelled test double on the host; they cannot validate Apptainer isolation or a real SIF. Results are written to `v3_validation_results.json`.

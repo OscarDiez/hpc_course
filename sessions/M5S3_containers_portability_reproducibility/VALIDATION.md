@@ -37,3 +37,35 @@ A job-wide PASS means no attempted case failed. It does not change an individual
 5. Save the executed notebook and real `.out`, `.err`, settings and report as SciTech evidence. Until then the slide plan must label this demonstration pending or optional.
 
 No notebook benchmark timings or hypothetical container results are published. The small input teaches reproducibility rather than speedup.
+
+
+
+## v3 · Existing-image container launches (24 October 2026)
+
+Build: `2026-10-24-v3-existing-containers`. Container execution is enabled by default. One bounded CPU batch now discovers course images and executes environment, bind/output and scientific replay examples, plus a NumPy stiffness solve when available. No download or installation occurs.
+
+### New local checks
+
+- All **21 Python code cells** parse and execute sequentially with `RUN_CLUSTER=False` in the test harness only; the student notebook retains True.
+- Native worker Python, serial GCC and actual two-thread OpenMP: PASS.
+- Environment, CSV read/write and NumPy stiffness/load-scaling payloads: PASS on the local host.
+- CLI orchestration: PASS under an explicit host-process test double. This verifies command construction, result checking and report handling, **not an actual container**.
+- Existing-image directory inventory, paths with spaces, explicit missing image, incompatible-image failure, fallback candidate, expected-hash rejection, half-load parameter and extracted-ZIP replay: PASS.
+- Generated Slurm script: `bash -n` PASS. Allocation remains one task × two CPU slots, 1 GiB, three minutes.
+- Actual Apptainer/SIF execution for this revision: **NOT RUN locally and not yet evidenced on SciTech**. Do not treat the test double as a container measurement.
+
+See `validate_notebook.py` and `v3_validation_results.json` for reproducible checks and exact scope.
+
+### Instructor-provided cluster result: prior v2 native path
+
+The newly supplied HTML export contains a complete real report for job **24608** on **julia**, with `foss/2023b` loaded and GCC **13.2.0**. It confirms Python, serial C and OpenMP PASS, with **two actual OpenMP threads**. The old container case is SKIPPED because `RUN_CONTAINER=False`. The report is preserved verbatim inside `scitech_native_evidence.json`; its date of execution is not independently inferred from the export.
+
+These native results supersede the earlier statement that no SciTech native evidence exists. They do not validate the changed v3 helper or any container path.
+
+### Accept the new container route on SciTech
+
+1. Open the updated raw branch notebook and save a fresh student copy. Keep `RUN_CONTAINER=True`.
+2. Inspect E4a's inventory. If images are elsewhere, set `IMAGE` or the instructor-approved `IMAGE_DIRS`.
+3. Wait for earlier jobs to finish, then run preparation/submission once. Collect the new job's matching complete report.
+4. Require actual PASS for `container_image`, `container_environment`, `container_bind` and `container`. NumPy may be SKIPPED if absent; require its own PASS before demonstrating the solve.
+5. Save the executed notebook/report/logs. Pin the accepted image path and hash for a controlled rerun. Preserve any genuine FAIL or SKIPPED result.
