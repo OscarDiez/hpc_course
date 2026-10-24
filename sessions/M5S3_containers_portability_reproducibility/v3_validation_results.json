@@ -1,0 +1,83 @@
+{
+  "context": "LOCAL_REVISION_TESTS_NOT_SCITECH_OR_APPTAINER",
+  "checks": {
+    "all_21_python_cells": {
+      "status": "PASS",
+      "harness": "sequential Python execution; RUN_CLUSTER=False only in test harness",
+      "evidence": {
+        "E1_dependency_drift": "PASS",
+        "E2_child_environment": "PASS",
+        "E2_venv": "PASS",
+        "E3_recorded_python": "PASS",
+        "E5_cache": "PASS",
+        "E5_independent_replay": "PASS",
+        "E5_tamper_rejection": "PASS"
+      }
+    },
+    "bash_syntax": "PASS",
+    "native_worker_actual_python_C_OpenMP": {
+      "status": "PASS",
+      "cases": {
+        "python": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.035621014,
+            "fraction_above": 0.253
+          }
+        },
+        "c_serial": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400004,
+            "fraction_above": 0.253,
+            "threads": 1
+          }
+        },
+        "c_openmp": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400001,
+            "fraction_above": 0.253,
+            "threads": 2
+          }
+        },
+        "container_image": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; deliberately disabled"
+        },
+        "container_environment": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; deliberately disabled"
+        },
+        "container_bind": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; deliberately disabled"
+        },
+        "container": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; deliberately disabled"
+        },
+        "container_numpy": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; deliberately disabled"
+        }
+      }
+    },
+    "image_inventory_spaces_and_missing_override": "PASS",
+    "CLI_double_control_flow_ONLY": {
+      "status": "PASS",
+      "note": "Host subprocesses under a fake CLI; not evidence of an actual container launch.",
+      "numpy_payload_status": "PASS"
+    },
+    "wrong_hash_rejected": "PASS",
+    "attempted_incompatible_images_FAIL": "PASS",
+    "missing_image_SKIPPED": "PASS",
+    "fallback_to_compatible_candidate": "PASS",
+    "changed_load_scale": "PASS",
+    "extracted_handover_replay": "PASS"
+  },
+  "actual_apptainer_execution": "NOT RUN: no runtime or real SIF in the local author environment"
+}

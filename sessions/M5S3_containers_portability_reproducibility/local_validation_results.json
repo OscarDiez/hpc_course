@@ -1,0 +1,149 @@
+{
+  "context": "LOCAL_AUTHOR_VALIDATION",
+  "date": "2026-10-24",
+  "python": "3.12.14",
+  "gcc": "13.3.0",
+  "checks": {
+    "json_structure": "PASS",
+    "all_python_cells_parse": "PASS",
+    "unexecuted_student_copy": "PASS",
+    "default": {
+      "status": "PASS",
+      "python_evidence": {
+        "E1_dependency_drift": "PASS",
+        "E2_child_environment": "PASS",
+        "E2_venv": "PASS",
+        "E3_recorded_python": "PASS",
+        "E5_cache": "PASS",
+        "E5_independent_replay": "PASS",
+        "E5_tamper_rejection": "PASS"
+      },
+      "cases": {
+        "python": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.035621014,
+            "fraction_above": 0.253
+          }
+        },
+        "c_serial": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400004,
+            "fraction_above": 0.253,
+            "threads": 1
+          }
+        },
+        "c_openmp": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400001,
+            "fraction_above": 0.253,
+            "threads": 2
+          }
+        },
+        "container": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; native checks still run"
+        }
+      },
+      "archive_replay": "PASS",
+      "batch_shell_syntax": "PASS"
+    },
+    "one_parameter": {
+      "status": "PASS",
+      "python_evidence": {
+        "E1_dependency_drift": "PASS",
+        "E2_child_environment": "PASS",
+        "E2_venv": "PASS",
+        "E3_recorded_python": "PASS",
+        "E5_cache": "PASS",
+        "E5_independent_replay": "PASS",
+        "E5_tamper_rejection": "PASS"
+      },
+      "cases": {
+        "python": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.035621014,
+            "fraction_above": 0.403
+          }
+        },
+        "c_serial": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400004,
+            "fraction_above": 0.403,
+            "threads": 1
+          }
+        },
+        "c_openmp": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400001,
+            "fraction_above": 0.403,
+            "threads": 2
+          }
+        },
+        "container": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; native checks still run"
+        }
+      },
+      "archive_replay": "PASS",
+      "batch_shell_syntax": "PASS"
+    },
+    "dependency_parameter": {
+      "status": "PASS",
+      "python_evidence": {
+        "E1_dependency_drift": "PASS",
+        "E2_child_environment": "PASS",
+        "E2_venv": "PASS",
+        "E3_recorded_python": "PASS",
+        "E5_cache": "PASS",
+        "E5_independent_replay": "PASS",
+        "E5_tamper_rejection": "PASS"
+      },
+      "cases": {
+        "python": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.035621014,
+            "fraction_above": 0.253
+          }
+        },
+        "c_serial": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400004,
+            "fraction_above": 0.253,
+            "threads": 1
+          }
+        },
+        "c_openmp": {
+          "status": "PASS",
+          "result": {
+            "count": 1000,
+            "mean_c": 20.03562101400001,
+            "fraction_above": 0.253,
+            "threads": 2
+          }
+        },
+        "container": {
+          "status": "SKIPPED",
+          "reason": "RUN_CONTAINER=False; native checks still run"
+        }
+      },
+      "archive_replay": "PASS",
+      "batch_shell_syntax": "PASS"
+    }
+  }
+}

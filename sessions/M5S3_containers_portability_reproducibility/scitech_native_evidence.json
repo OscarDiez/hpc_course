@@ -1,0 +1,49 @@
+{
+  "source": "Instructor-provided M5S3 HTML export (2), reviewed 24 October 2026",
+  "scope": "Prior v2 notebook; this is not evidence that the new v3 container examples executed.",
+  "report": {
+    "run_id": "run-e7c47cc041f16c807bcc",
+    "context": "SCITECH_SLURM",
+    "job_id": "24608",
+    "host": "julia",
+    "python": "3.13.5 (main, May  5 2026, 21:05:52) [GCC 14.2.0]",
+    "module_status": "LOADED: foss/2023b",
+    "cases": {
+      "python": {
+        "status": "PASS",
+        "result": {
+          "count": 1000,
+          "mean_c": 20.035621014,
+          "fraction_above": 0.253
+        }
+      },
+      "c_serial": {
+        "status": "PASS",
+        "result": {
+          "count": 1000,
+          "mean_c": 20.03562101400004,
+          "fraction_above": 0.253,
+          "threads": 1
+        }
+      },
+      "c_openmp": {
+        "status": "PASS",
+        "result": {
+          "count": 1000,
+          "mean_c": 20.03562101400001,
+          "fraction_above": 0.253,
+          "threads": 2
+        }
+      },
+      "container": {
+        "status": "SKIPPED",
+        "reason": "RUN_CONTAINER=False; native checks still run"
+      }
+    },
+    "compiler_path": "/cvmfs/software.eessi.io/versions/2023.06/software/linux/x86_64/amd/zen4/software/GCCcore/13.2.0/bin/gcc",
+    "compiler_version": "gcc (GCC) 13.2.0",
+    "complete": true,
+    "status": "PASS",
+    "note": "Job PASS does not promote SKIPPED capabilities to PASS; inspect each case. No MPI/GPU experiment is performed."
+  }
+}
