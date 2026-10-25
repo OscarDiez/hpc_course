@@ -44,9 +44,9 @@ replace_once("'mode':args.mode,'world_size':world,'local_batch':b//world,'global
 (root/'gradient.c').write_text(values['c_source'])
 # The same CPU resources, compiler setup and shared image as the validated lab.
 batch=values['batch_source']
-for mode in ('preflight','full'):
+for mode in ('baseline','full'):
     new=batch.replace('--job-name=m4s5-guided',f'--job-name=m4s5-{mode}')
-    new=new.replace('python3 /work/ml_lab.py --mode workflow',f'python3 /work/assignment_check.py --mode {mode}')
+    new=new.replace('python3 /work/ml_lab.py --mode workflow',f'python3 /work/run_experiments.py --mode {mode}')
     new=new.replace('cat SUMMARY.txt','cat ASSIGNMENT_SUMMARY.txt')
     (root/f'run_{mode}.sbatch').write_text(new)
 digits=''.join(re.findall(r'\d',sys.argv[1]))
@@ -58,5 +58,5 @@ seed=2026+int(digits[-4:])
  'seed_rule':'2026 + final four numeric digits of student ID','seed':seed},indent=2)+'\n')
 print('Created assignment files in',root)
 print('Personal seed:',seed)
-print('First run: sbatch run_preflight.sbatch')
+print('First run: sbatch run_baseline.sbatch')
 print('After implementing student.py: sbatch run_full.sbatch')
