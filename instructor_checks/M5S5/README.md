@@ -35,7 +35,7 @@ For the optional container check, export `M5S5_IMAGE` to the absolute path of an
 
 PASS: the named executed check succeeded. FAIL: an attempted check failed; inspect its diagnostic and commands.log. SKIPPED: an optional feature was unavailable/unconfigured. NOT RUN: a prerequisite prevented execution or the run is explicitly local. A missing optional feature does not prove that MPI/container execution works. A failing optional MPI launch needs correction or the assignment's documented CPU alternative.
 
-Successful baseline and OpenMP checks support releasing the CPU route. MPI and image results determine which optional routes have actually been validated. The script does not validate an as-yet unwritten student implementation, speedup claim, PDF submission or Blackboard settings. It cannot certify every student's account permissions or resource quota; a short student-account pilot is still useful.
+Only interpret the final result when the report state is COMPLETED. RUNNING/IN PROGRESS can mean a job is still executing or was terminated; inspect Slurm state and logs. Successful baseline and OpenMP checks support releasing the CPU route. MPI and image results determine which optional routes have actually been validated. The script does not validate an as-yet unwritten student implementation, speedup claim, PDF submission or Blackboard settings. It cannot certify every student's account permissions or resource quota; a short student-account pilot is still useful.
 
 If the job produces no summary, inspect the printed Slurm log and run `sacct -j JOBID --format=JobID,State,ExitCode,Elapsed,AllocCPUS`. A module-loading failure or scheduler termination can happen before Python starts. Cancel an unwanted job with `scancel JOBID`.
 
