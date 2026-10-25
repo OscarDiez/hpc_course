@@ -23,7 +23,7 @@ The C search uses deterministic synthetic vectors; it does not evaluate semantic
 
 ## Run
 
-Use the [SciTech guide](../../cluster/README.md). Work under your shared home directory, not a compute node's `/tmp`. Edit `site_env.sh` with the actual compatible module commands and the approved existing **Python 3 SIF** path in `M5S5_IMAGE`.
+Use the [SciTech guide](../../cluster/README.md). Work under your shared home directory, not a compute node's `/tmp`. The supplied `site_env.sh` selects the configuration used in instructor SciTech job 24943: system tools first, `OMPI_CC=/usr/bin/gcc`, and shared image `/data/software/containers/pytorch-2.8.0-cuda12.8.sif`. Each batch job sources it. No image download/copy, package installation or GPU is required for replay. Inspect the printed notebook working directory and run batch commands there, not in the separate instructor preflight directory.
 
 ```bash
 sbatch cpu.sbatch
@@ -45,4 +45,6 @@ Native CPU and Apptainer replay are core activities. A missing image/runtime is 
 
 The notebook has 20 cells, 9 code cells; published outputs are cleared. Local tests executed all nine cells and actual-record analysis. Serial/OpenMP small/odd/default checks, an independent tiny Python reference, default repetitions and deliberate wrong-result rejection passed. New replay payload tests passed natively for top-1/top-k, ties, boundary cases, corrupted scores, source/input drift and CLI provenance.
 
-Instructor-provided SciTech job **24922**, host **haskell**, passed native serial build, independent fixtures, checker negative tests, Q=32/Q=64 baseline workloads and guided OpenMP teams 1/2/4. Its MPI link failed with mixed EESSI/system OpenMPI paths. This is evidence for those core C computations, not a successful MPI result. The newly revised manifest/container workflow still requires a fresh site run. **Actual Apptainer binds, clean environment and forwarding: NOT RUN until site execution evidence exists.** A real approved Python SIF path is required; none is guessed here.
+Instructor-provided SciTech job **24943**, host **haskell**, completed with all attempted checks PASS: native GCC 14.2.0 serial build; independent correctness fixtures; checker negative tests; Q=32/Q=64 baseline workloads; guided OpenMP teams 1/2/4; guided MPI 2 ranks × 2 threads; and shared-image Apptainer replay including binds, environment forwarding and bad-result rejection. This is not validation of a student's assessed top-k solution.
+
+The notebook's actual end-to-end SciTech prepare/submit/report/plot workflow still needs its own execution evidence. Published outputs remain cleared; missing student reports are NOT RUN. The notebook prints the exact terminal working directory, preserves an existing site_env.sh, and explains the CPU-before-replay dependency.
