@@ -47,7 +47,7 @@ The notebook has 20 cells, 9 code cells; published outputs are cleared. Local te
 
 Instructor-provided SciTech job **24943**, host **haskell**, completed with all attempted checks PASS: native GCC 14.2.0 serial build; independent correctness fixtures; checker negative tests; Q=32/Q=64 baseline workloads; guided OpenMP teams 1/2/4; guided MPI 2 ranks × 2 threads; and shared-image Apptainer replay including binds, environment forwarding and bad-result rejection. This is not validation of a student's assessed top-k solution.
 
-The notebook's actual end-to-end SciTech prepare/submit/report/plot workflow still needs its own execution evidence. Published outputs remain cleared; missing student reports are NOT RUN. The notebook prints the exact terminal working directory, preserves an existing site_env.sh, and explains the CPU-before-replay dependency.
+Instructor notebook export confirms automatic CPU job **24945 PASS**, hybrid **24946 PASS** and replay **24947 PASS**, all on haskell. Matplotlib was missing in that kernel; the updated chart cell has a standard-library SVG fallback validated locally against these actual records. Speedup columns explicitly identify their reference implementation. Published outputs remain cleared; missing student reports are NOT RUN. The notebook prints the exact terminal working directory, preserves an existing site_env.sh, and explains the CPU-before-replay dependency.
 
 
 ## Automatic student execution
@@ -56,4 +56,4 @@ Run the notebook cells in order. The submission/status cell defaults to `AUTO_RU
 
 The status cell waits up to 45 seconds, including queue time. If jobs remain PENDING/RUNNING, rerun that cell and the E4/E5 result cells later; no duplicate jobs are created. Numerical PASS comes from current reports, not scheduler state. If Jupyter lacks sbatch, use the printed SSH directory and manual commands instead; do not use both submission routes. A known old comment-only environment template is backed up and replaced; custom configurations are preserved.
 
-Instructor notebook CPU job 24944 completed on SciTech with passing serial/OpenMP records. The new automatic orchestration is locally tested with simulated scheduler responses; actual automatic end-to-end SciTech execution is still to be tested.
+Instructor notebook CPU job 24944 completed on SciTech with passing serial/OpenMP records. The automatic orchestration subsequently completed on SciTech in jobs 24945–24947. Those checks do not replace each student's current execution evidence.
