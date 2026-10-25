@@ -1,41 +1,39 @@
 # Practice 4 - Individual distributed ML assignment
 
-Student-facing brief: `BLACKBOARD_ASSIGNMENT.md`. It has Blackboard evidence questions (40%) and one consolidated PDF (60%). The question bank and slides are separate deliverables.
+Read [the Blackboard assignment brief](BLACKBOARD_ASSIGNMENT.md). Submit the assignment evidence questions and one consolidated PDF; the module quiz has a separate purpose.
 
-## Student starter
+## Student setup
 
-`setup_assignment.sh STUDENT_ID NEW_DIRECTORY` downloads the pinned, cluster-validated guided notebook at commit `616f5fbe63e2e0d63fbecbcae0232defd44d72ce`, extracts its actual executable source literals without submitting notebook jobs, and applies checked, single-occurrence transformations to add the unequal-shard exercise. No complete correction is supplied: `student.py` intentionally raises NotImplementedError.
+Run `setup_assignment.sh YOUR_STUDENT_ID NEW_DIRECTORY` from SciTech SSH. The setup refuses to overwrite an existing directory, derives your personalized seed and prepares the supplied teaching sources. It downloads no packages or container images.
 
-`prepare_assignment.py` writes personalized `config.json`, provenance, native C, ML source and two CPU batch scripts. `run_preflight.sbatch` checks supplied capabilities; `run_full.sbatch` also calls the student's function and compares corrected full training with the one-worker reference. No package installation, GPU or image download is used. The shared image is `/data/software/containers/pytorch-2.8.0-cuda12.8.sif`.
+The generated files are:
 
-The exercise retains identical global-batch membership for every update. For two ranks, balanced shards have half the batch each; unequal shards have three quarters and one quarter. Both ranks still participate in every optimizer update. Naive unequal mean-loss averaging is an intentionally wrong computation; its expected FAIL must be detected with synchronized replicas.
+- `student.py`: your required loss-multiplier implementation; initially unfinished.
+- `ml_lab.py`: supplied model, data, DDP, workflow, recovery and inference code.
+- `gradient.c`: numerical gradient example.
+- `run_experiments.py`: student baseline and implementation correctness checks.
+- `config.json` and `provenance.json`: your settings and source identity.
+- `run_baseline.sbatch`: run the supplied baseline experiments and intentional incorrect unequal-shard example.
+- `run_full.sbatch`: run the baseline plus your completed correction and full-training comparisons.
 
-The preflight executes N=4096, six epochs, global batch 128, three repeats each of one-worker and balanced two-worker DDP, the three-candidate workflow, actual interruption/restart, inference and the intentional unequal-shard negative test. Its PASS means only supplied prerequisites passed; student implementation remains NOT RUN. Full mode adds a corrected one-step comparison and three corrected complete runs. Full mode must be run separately at global batch 128 and 256. It does not assess report interpretation or authorship.
+The setup helpers extract sources from the pinned guided notebook. Your own experiment directories contain only student activities and their supporting files.
 
-Run one job per work directory at a time. Generated outputs from a previous run are preserved in `previous_outputs/`; existing Slurm logs also remain distinguishable by job ID. Use separate directories for the two batch configurations. Do not confuse an old summary with a newly pending job; match the report job ID to `sacct`.
+## Student workflow
 
-## Instructor test
+1. Submit `run_baseline.sbatch`, wait for completion and read the matching `ASSIGNMENT_SUMMARY.txt`, `assignment_report.json` and Slurm log. Baseline PASS does not validate an unfinished student function.
+2. Implement `loss_multiplier()` in `student.py` without altering the supplied reference checks.
+3. Submit `run_full.sbatch` and require the numerical comparisons to pass.
+4. Repeat the required global-batch experiment in a separate directory, following the brief.
+5. Preserve raw timings, numerical checks, model-selection/recovery/inference evidence and the matching job IDs for your PDF and Blackboard questions.
 
-From SciTech SSH:
+The two-rank unequal case assigns three quarters of each global batch to rank 0 and one quarter to rank 1. The combined samples must have the same influence as in the serial global-batch reference. The deliberately wrong local-mean average must be detected; it is not a valid student correction.
 
-```bash
-mkdir -p "$HOME/m4s5-assignment-validation"
-cd "$HOME/m4s5-assignment-validation"
-curl -fL 'https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m4s5-distributed-ml-2026/assignments/practice4_distributed_ml/verify_assignment.sh' -o verify_assignment.sh
-bash verify_assignment.sh
-```
+Use one job per working directory at a time. Inspect output only for the matching completed job. Earlier generated outputs are preserved under `previous_outputs/`; separate batch-size directories prevent one experiment from replacing another.
 
-This makes fresh directories, prepares the actual student starter with representative identifier 1042 (seed 3068), and submits the exact preflight batch jobs for global batches 128 and 256. The second job waits for the first to finish, limiting concurrent demand. It prints exact status/summary commands for both. Wait for completion and require Overall PASS with PREFLIGHT ONLY scope. The intentional student NOT RUN line is correct. A submission is not PASS. If it fails, read the printed Slurm log and `assignment_report.json`.
+## Resources and results
 
-These preflights test one representative personalized seed at both required batch sizes without supplying a student solution. Student full-mode verification still requires the student's own correction; no complete reference solution is published.
+Use the supplied CPU Slurm scripts: one node, two cores, 4 GB and an eight-minute limit. The centrally installed image is `/data/software/containers/pytorch-2.8.0-cuda12.8.sif`. C runs natively; Python ML work uses the image. No GPU is required.
 
-## Validation boundary
+PASS means the executed numerical checks passed. An intentional naïve result failure is a successful negative test when it is correctly detected. A submitted, pending or running job has no final success result. An unfinished student function remains NOT RUN in the baseline and must actually pass in the full run.
 
-- Existing guided notebook: actual six-check SciTech PASS, job 24983, haskell, PyTorch 2.8.0+cu128, N=2048. Evidence in `sessions/M4S5_async_distributed_ml/validation/scitech_24983.json`.
-- New assignment: source extraction and checked transformations, Python syntax and both generated Slurm script syntax verified locally.
-- Local N=4096, personalized seed 3068: C fixture, prepared data, independent candidate workflow, actual checkpoint interruption/restart, and inference passed with real PyTorch. See `validation/local_workflow_report.json`; Overall remains SKIPPED because Gloo cannot initialize in the authoring environment.
-- Independent numerical tests: naive unequal local-mean averaging differs from the full-batch update; sample-weighted reference agrees; both batch sizes cover exactly the training rows; starter function is intentionally absent. See `validation/local_math_validation.json`.
-- NOT RUN: the new assignment-specific real Gloo harness on SciTech, the representative preflight and batch-256 preflight. Instructor must collect this new evidence; historical guided PASS must not be relabelled as assignment-specific PASS.
-- NOT RUN: any student implementation, report, Blackboard bank or authorship check.
-
-No validated reference solution to the student exercise is included in this public repository. Explicitly incorrect code is limited to the labelled negative test.
+The baseline uses real one-node CPU Gloo DDP; these timings do not establish GPU or multi-node scaling. The supplied measurements exclude process startup/data preparation from training-loop timing. Inference measurements are model-call timings, excluding network and queueing delay. A slower correct parallel run remains a valid observation.
