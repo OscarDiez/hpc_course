@@ -59,16 +59,16 @@ from statistics import median
 ROOT=Path(os.environ['M5S5_CHECK_DIR']).resolve()
 ROOT.mkdir(parents=True,exist_ok=True);os.chdir(ROOT)
 LOCAL=os.environ.get('M5S5_CHECK_MODE')=='LOCAL'
-report=dict(mode='LOCAL' if LOCAL else 'SLURM',host=platform.node(),
+report=dict(state='RUNNING',mode='LOCAL' if LOCAL else 'SLURM',host=platform.node(),
             job_id=os.environ.get('SLURM_JOB_ID'),python=sys.version.split()[0],
             started=time.strftime('%Y-%m-%dT%H:%M:%S%z'),checks=[],measurements=[],
             limitations=['No student parallel/optimized top-k solution is supplied or validated.',
                          'This validates the supplied baseline/checker and guided-code capabilities, not student authorship or Blackboard grading.'])
 
 def save():
-    report['overall']='FAIL' if any(c['status']=='FAIL' for c in report['checks']) else 'PASS'
+    report['overall']=('FAIL' if any(c['status']=='FAIL' for c in report['checks']) else 'PASS') if report['state']=='COMPLETED' else 'IN PROGRESS'
     (ROOT/'report.json').write_text(json.dumps(report,indent=2)+'\n')
-    lines=['M5S5 instructor preflight',f"Mode: {report['mode']}",f"Host: {report['host']}  Job: {report['job_id']}"]
+    lines=['M5S5 instructor preflight',f"Run state: {report['state']}",f"Mode: {report['mode']}",f"Host: {report['host']}  Job: {report['job_id']}"]
     lines += [f"{c['status']:8} {c['name']}: {c.get('detail','')}" for c in report['checks']]
     lines += [f"Overall attempted checks: {report['overall']}"] + report['limitations']
     (ROOT/'SUMMARY.txt').write_text('\n'.join(lines)+'\n')
@@ -247,6 +247,7 @@ try:
 except Exception as e:
     status('Preflight setup','FAIL',str(e))
 finally:
+    report['state']='COMPLETED'
     save()
     print('\n'+(ROOT/'SUMMARY.txt').read_text(),flush=True)
     print('REPORT DIRECTORY:',ROOT,flush=True)
