@@ -30,21 +30,21 @@ curl -fL 'https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m4s5-d
 bash setup_assignment.sh YOUR_STUDENT_ID "$HOME/m4s5_individual_b128"
 cd "$HOME/m4s5_individual_b128"
 unset SLURM_MEM_PER_CPU SLURM_MEM_PER_GPU SLURM_MEM_PER_NODE
-sbatch run_preflight.sbatch
+sbatch run_baseline.sbatch
 ```
 
 The setup refuses to overwrite an existing directory. If you need a fresh attempt, choose a new directory name. Your seed is **2026 plus the final four numeric digits of your student identifier**; if it contains fewer than four numeric digits, use all its numeric digits. The setup calculates this automatically and saves it in `config.json` and `provenance.json`.
 
 The supplied job uses one CPU node, two CPU cores, 4 GB and an eight-minute limit. C runs natively; Python uses the centrally installed shared PyTorch image. Do not download a private image, install packages or request GPUs for this assignment. Detailed container programming and MPI/OpenMP hybrid implementation are not required here.
 
-Wait for the preflight job to finish. Use its actual job ID in:
+Wait for the baseline job to finish. Use its actual job ID in:
 
 ```bash
 sacct -j JOB_ID --format=JobID,State,ExitCode,Elapsed
 cat ASSIGNMENT_SUMMARY.txt
 ```
 
-The preflight must show **Overall: PASS** with scope **PREFLIGHT ONLY**. The student correction should say **NOT RUN** at this point: you have not implemented it yet. Inspect `assignment_report.json`, `report.json` and `slurm-JOB_ID.out` if a required check fails.
+The baseline must show **Overall: PASS** with scope **BASELINE ONLY**. The student correction should say **NOT RUN** at this point: you have not implemented it yet. Inspect `assignment_report.json`, `report.json` and `slurm-JOB_ID.out` if a required check fails.
 
 Use these fixed baseline settings:
 
@@ -68,7 +68,7 @@ Keep the supplied harness and reference checks unchanged. Your required implemen
 
 Before looking at the timings, write a short prediction about one-worker versus two-worker performance.
 
-From your own preflight results:
+From your own baseline results:
 
 - Explain the data path: synthetic inputs, prepared features, training/validation/test split, model training, selection, evaluation and inference.
 - Explain which data are cached and what the recorded dataset hash identifies.
@@ -84,7 +84,7 @@ The supplied exercise divides every global batch between two workers in a **3:1 
 
 Each worker computes the **mean** loss on its local examples. Ordinary DDP then averages the workers' gradients. Giving equal influence to the two local means does not generally give equal influence to every sample when their counts differ.
 
-The preflight deliberately runs this naïve version. Inspect `unequal-naive.json` and `unequal-naive.log`. Show that replicas agree while the serial-reference comparison fails. An expected failure of this deliberately incorrect computation is a successful negative test, not a reason to suppress errors.
+The baseline deliberately runs this naïve version. Inspect `unequal-naive.json` and `unequal-naive.log`. Show that replicas agree while the serial-reference comparison fails. An expected failure of this deliberately incorrect computation is a successful negative test, not a reason to suppress errors.
 
 Implement `loss_multiplier(local_count, global_count, world_size)` in `student.py`:
 
@@ -184,6 +184,6 @@ The remaining 40% comes from the Blackboard evidence questions. A faster result 
 
 ## Execution status and infrastructure problems
 
-Use the labels accurately: **PASS**, **FAIL**, **SKIPPED**, **NOT RUN**. Submitted, pending or running jobs have not passed yet. The preflight's student section is intentionally NOT RUN; the final student correction must actually execute and pass. Never present an expected negative-test failure as a successful corrected implementation.
+Use the labels accurately: **PASS**, **FAIL**, **SKIPPED**, **NOT RUN**. Submitted, pending or running jobs have not passed yet. The baseline's student section is intentionally NOT RUN; the final student correction must actually execute and pass. Never present an expected negative-test failure as a successful corrected implementation.
 
 If the shared image, compiler, Slurm allocation or distributed runtime is unavailable, retain the job ID, exact error and logs, and contact the lecturer. Do not silently replace required cluster evidence with invented measurements or a claim of multi-node/GPU execution. Continue with work that does not depend on the unavailable component and identify what remains untested.
