@@ -7,7 +7,7 @@ if [ -e "$DEST" ]; then echo "Directory already exists: $DEST. Choose a NEW dire
 mkdir -p "$DEST"
 cd "$DEST"
 BASE='https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m4s5-distributed-ml-2026/assignments/practice4_distributed_ml'
-for FILE in prepare_assignment.py assignment_check.py student.py; do
+for FILE in prepare_assignment.py run_experiments.py student.py; do
     curl -fL "$BASE/$FILE" -o "$FILE"
 done
 curl -fL 'https://raw.githubusercontent.com/OscarDiez/hpc_course/616f5fbe63e2e0d63fbecbcae0232defd44d72ce/sessions/M4S5_async_distributed_ml/M4S5_async_distributed_ml.ipynb' -o guided_source.ipynb
