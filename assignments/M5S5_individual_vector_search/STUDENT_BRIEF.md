@@ -13,7 +13,7 @@ This extends the guided top-1 example: a correct local winner is insufficient fo
 
 ## 2. Starter files
 
-Use `topk_baseline.c`, `check_topk.py`, `baseline.sbatch` and `site_env.sh` from this assignment directory. Preserve the original baseline. Put your implementation in `topk_candidate.c` and record the source hashes and starter repository commit.
+Use `topk_baseline.c`, `check_topk.py`, `baseline.sbatch`, `site_env.sh` and `container_replay.py` from this assignment directory. Preserve the original baseline. Put your implementation in `topk_candidate.c` and record the source hashes and starter repository commit.
 
 The supplied batch script runs only three serial baseline repetitions. **You must add your own candidate compilation, launches, result files and checks.** Inspect and adapt the script; do not label the starter's serial results as parallel execution.
 
@@ -71,11 +71,31 @@ Where the established SciTech MPI toolchain is available, implement collection s
 
 If the site MPI toolchain/launcher is unavailable, show the attempted environment/launch diagnostic and use the **CPU alternative**: compare two correct OpenMP decompositions (for example, work over queries versus collection rows) at four threads, three repetitions each, with equivalent algorithm and work. Include the proposed MPI shard ownership and global merge algorithm in your report. This documented alternative can earn the same marks; an unsupported assertion that MPI is unavailable cannot replace evidence. A single-node MPI result is not proof of multi-node scaling.
 
-### E. Reproducibility and portability
+### E. Environment modules, Apptainer and a reproducible workflow
 
-Record modules, compiler/version, flags, source hash, input generator/parameters, commands, job IDs, host/CPU information, Slurm allocation and thread settings. Write an exact small rerun procedure.
+This is a **required hands-on activity**, not just a paragraph about containers. The teacher will identify an existing trusted Python 3 SIF on SciTech. You do not need gcc, MPI or a package installation inside this image.
 
-If a trusted C/OpenMP-compatible Apptainer image already exists and is accessible, compile and run the small correctness case inside it through Slurm, check against the reference and record its checksum. Do not use an unverified image path or download/install an image for this task. If no compatible image exists, provide the availability/compatibility diagnostic and a fully specified module-based rerun recipe; explain the remaining portability limits. Either evidenced route can earn full reproducibility marks. GPU execution and containerized MPI are not required.
+1. Inspect and record the native environment: `module list`, `type -a gcc mpicc python3 apptainer`, compiler version and `mpicc --showme` where available. Put the chosen site modules in `site_env.sh`. Select a matching compiler/MPI stack; do not mix a system MPI wrapper with an unrelated EESSI toolchain. Record the running notebook interpreter separately from shell module changes.
+2. Run your actual C searches through Slurm and retain the serial reference and candidate JSON. C computation remains native; the following container stage validates and analyses its recorded results.
+3. Run the supplied **unchanged** `container_replay.py` with native Python, then with Apptainer using the same reference/candidate files. Its `--reference`, `--candidate` and `--output` arguments name the exact files. Use your own candidate's main workload (Q=32, K=10), not a copied guided top-1 result.
+4. Bind the input/script directory read-only and a separate owned output directory read-write. Use `--cleanenv`. Compare numerical results and code/input hashes; interpreter/platform metadata can differ. Record the SIF checksum, exact launch, host and job ID. A matching checksum identifies bytes, not publisher trust.
+5. Set `HPC_M5S5_HOST_SENTINEL=host-only` in the native environment and inspect its recorded value inside the clean container. Then explicitly forward a chosen value with `APPTAINERENV_HPC_M5S5_HOST_SENTINEL` and verify it is recorded without changing scientific results. Explain what this shows about inherited versus explicitly supplied environment settings.
+6. Copy one candidate result, deliberately alter a score, and show that validation inside the container fails. Preserve the original. This is an expected rejection test, not permission to submit changed benchmark results.
+7. Write a short executable shell workflow that checks its inputs, runs the native and container validation stages, stops on unexpected errors and saves separate outputs/logs. Include commands for one small independent rerun and for rebuilding/rerunning after a source change. Show why an old PASS report cannot validate newly edited code or different inputs.
+
+Example launch pattern, **inside your Slurm allocation**, with directory/image variables set to actual absolute paths:
+
+```bash
+srun -n1 -c1 apptainer exec --cleanenv \
+  --bind "$INPUT_DIR:/work:ro" --bind "$OUTPUT_DIR:/out" \
+  --pwd /work "$M5S5_IMAGE" python3 /work/container_replay.py \
+  --reference /work/reference.json --candidate /work/candidate.json \
+  --output /out/container_check.json
+```
+
+Prepare the chosen files in `INPUT_DIR` and create the owned `OUTPUT_DIR` before launching. `M5S5_IMAGE` must point to the existing approved Python 3 image; it is not an image download command. If Apptainer/image access is blocked, retain the diagnostic and report this task as **NOT RUN**; do not silently replace required execution with a theoretical answer. The instructor will resolve the site issue or state the applicable alternative before release.
+
+This validates **native C outputs inside a container**. It does not demonstrate C/MPI/GPU execution inside that image. A C-in-container extension is optional and requires a separately compatible toolchain/runtime. GPU execution, Spack installations and advanced workflow-framework syntax are not required. In your explanation distinguish what modules, a package specification, an image and a workflow preserve.
 
 ## 5. Resource and measurement discipline
 
@@ -86,27 +106,15 @@ If a trusted C/OpenMP-compatible Apptainer image already exists and is accessibl
 - PASS means a completed numerical check passed. FAIL means an attempted failure. SKIPPED means an optional/unavailable feature. NOT RUN means no execution evidence. A slower correct run is not a numerical failure.
 - If the cluster is blocked, retain diagnostics, identify affected experiments as NOT RUN and contact the instructor before the deadline. Local runs may help debugging but do not fulfil the required cluster evidence by themselves. Never fabricate missing results.
 
-## 6. Blackboard submission: two graded parts
+## 6. Your own diagnostic experiment
 
-### Part A · Eight evidence questions — 40 points
+Choose one additional small test motivated by your actual results. Before running, record the observation, hypothesis, single setting/detail you will change and predicted outcome. Execute it within the resource limits and explain whether the evidence supports your prediction. Preserve its job ID, configuration and raw output. Repeating the guided notebook unchanged is not an independent diagnostic experiment.
 
-Answer each question in its Blackboard answer field. Use your own run values, job IDs and PDF page/table references. Usually 80–120 words per question is sufficient. These are manually graded assignment questions, **not the separate module quiz**.
+## 7. Blackboard submission: two graded parts
 
-**Q1 — Work and memory (5 points).** For the main workload, calculate the collection storage in bytes/MiB and the number of query–collection dot products and component multiply-add pairs. Explain what changes when Q doubles and which costs your timer excludes. Distinguish a multiply-add pair from a FLOP count.
+### Part A · Assignment question component — 40 internal points
 
-**Q2 — Parallel ownership (5 points).** Explain your actual OpenMP ownership and race-prevention design. For a four-CPU budget compare 1×4 and 2×2, including the global top-k merge. Cite your executed hybrid/CPU-alternative evidence and distinguish executed work from a proposed design.
-
-**Q3 — Correctness under ties (5 points).** Give the ordered expected IDs for the supplied tie fixture, show your actual result and checker outcome, and explain why checking only the first neighbour or a checksum is insufficient.
-
-**Q4 — A defensible speedup (5 points).** Using your three-repeat measurements, calculate the median, speedup and efficiency for your first OpenMP implementation. State the reference denominator, identify whether you are reporting strong scaling or overall baseline improvement, and explain why Q=64 cannot be substituted into the Q=32 comparison.
-
-**Q5 — Optimization decision (5 points).** State the measured bottleneck hypothesis, the single implementation change, correctness outcome and same-configuration before/after result. Explain whether the evidence supports retaining the change, even if it slowed down.
-
-**Q6 — Interpreting the limit (5 points).** Use phase timings or profiler evidence and repetition variation to explain one observed performance limit. Separate a measured observation from an untested explanation, and propose one further controlled measurement that could distinguish competing explanations.
-
-**Q7 — Reproducing the result (5 points).** Give the essential environment and exact rerun information, cite your container result or documented module-based alternative, and explain two relevant dependencies that a container image alone would not settle.
-
-**Q8 — System recommendation (5 points).** Recommend a deployment configuration for this measured workload, considering runtime, search-phase throughput, CPU budget and reproducibility. Connect your recommendation to at least two earlier-course concepts, such as memory behaviour, Amdahl's law, communication, resource placement or data movement. State one limit on extrapolating your findings to a larger system.
+Complete the questions selected from the assignment evidence bank in Blackboard. They concern these files, correctness checks, configurations, code behaviour, measurements and workflow decisions. Keep your own working directory and PDF references available. This is separate from the Module 5 quiz. The pool's raw marks are normalized/configured by the instructor to this component's allocation; they do not define a new course-grade weight.
 
 ### Part B · One consolidated evidence PDF — 60 points
 
@@ -119,17 +127,18 @@ Use **4–6 pages for the main report**, including figures, followed by readable
 3. Correctness table for all required fixtures and configurations, with representative ordered top-k output and checker outcomes.
 4. Experiment table with all raw repetition times, medians, speedup/efficiency where valid, throughput, source version and job IDs. Include Q=64 separately.
 5. Bottleneck evidence, optimization comparison, interpretation and limitations.
-6. Reproduction instructions, environment and image identity/alternative evidence.
+6. Reproduction instructions, environment and actual image identity, native/container comparisons, environment forwarding and expected-error evidence.
+7. Your independent diagnostic experiment: prediction, controlled change, result and interpretation.
 
 Append **the complete source of your submitted candidate and any separate before-optimization version needed to reproduce the comparison**, your build/Slurm/analysis scripts, exact commands and a concise log extract connecting each results set to its job and configuration. The baseline may be referenced by its provided file hash/commit; identify any modifications explicitly. Include your raw timing table as text, not only a graph. Keep complete logs and full result JSON in your own working area in case verification is requested; include the relevant numerical evidence and checks in the PDF rather than dumping every repeated neighbour list.
 
 Use selectable, legible code text, page numbers and clear labels. No screenshot-only code, external-only results or unexplained graphs. State any permitted assistance and sources under the course rules. You must be able to explain and reproduce your work. The guided notebook does not grant permission to submit AI-generated final assessed code or answers where the course rules prohibit it.
 
-## 7. Internal marking
+## 8. Internal marking
 
 | Component | Points |
 |---|---:|
-| Part A: eight questions, 5 points each | 40 |
+| Part A: assignment evidence questions | 40 |
 | PDF: correctness and top-k evidence | 15 |
 | PDF: controlled methodology and complete timing evidence | 10 |
 | PDF: cluster execution and hybrid/CPU alternative | 10 |
