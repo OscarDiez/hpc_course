@@ -1,8 +1,9 @@
-# Put the exact SciTech module load commands here, after checking module avail/list.
-# Native CPU: Python 3 and gcc with OpenMP.
-# Hybrid: a matching compiler + MPI stack; inspect mpicc --showme and its paths.
-# Do not combine a system OpenMPI wrapper with an unrelated EESSI compiler stack.
-# Required container workflow: load Apptainer if needed and name an existing trusted Python 3 SIF.
-# export M5S5_IMAGE=/absolute/path/to/approved-python3-image.sif
-# No GCC or MPI is needed inside that image for the result-validation workflow.
-# Optional C-inside-container extension needs a separate gcc/OpenMP-capable image.
+# SciTech configuration used in the successful instructor preflight, job 24943.
+# Apply inside batch jobs; do not edit shell startup files or the running kernel.
+export PATH="/usr/bin:/bin:$PATH"
+unset LD_LIBRARY_PATH LIBRARY_PATH CPATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH
+export OMPI_CC=/usr/bin/gcc
+
+# Shared Python 3 image: no download, copy, installation or GPU is needed.
+export M5S5_IMAGE=/data/software/containers/pytorch-2.8.0-cuda12.8.sif
+# Optional C-in-container work requires a separately verified C/OpenMP image.
