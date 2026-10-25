@@ -25,9 +25,9 @@ curl -fL 'https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m4s5-d
 bash verify_assignment.sh
 ```
 
-This makes a fresh directory, prepares the actual student starter with representative identifier 1042 (seed 3068), submits the exact preflight batch job, and prints exact status/summary commands. Wait for completion and require Overall PASS with PREFLIGHT ONLY scope. The intentional student NOT RUN line is correct. A submission is not PASS. If it fails, read the printed Slurm log and `assignment_report.json`.
+This makes fresh directories, prepares the actual student starter with representative identifier 1042 (seed 3068), and submits the exact preflight batch jobs for global batches 128 and 256. The second job waits for the first to finish, limiting concurrent demand. It prints exact status/summary commands for both. Wait for completion and require Overall PASS with PREFLIGHT ONLY scope. The intentional student NOT RUN line is correct. A submission is not PASS. If it fails, read the printed Slurm log and `assignment_report.json`.
 
-This preflight validates one representative seed at batch 128. To test the supplied batch-256 route without supplying a student solution, set up a separate new directory, change only `config.json` global_batch to 256, then submit `run_preflight.sbatch`. Student full-mode verification still requires the student's own correction; no complete reference solution is published.
+These preflights test one representative personalized seed at both required batch sizes without supplying a student solution. Student full-mode verification still requires the student's own correction; no complete reference solution is published.
 
 ## Validation boundary
 
