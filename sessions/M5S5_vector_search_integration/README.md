@@ -1,50 +1,48 @@
 # M5S5 · Vector search integration lab
 
-Guided C lab consolidating hybrid computing, MPI/OpenMP layout, performance evidence and reproducibility. This supports Session 25; the assessed group milestone remains a separate submission. Module quiz and individual cluster assignment are separate activities.
-
-## Open the notebook
+Guided C/Slurm lab consolidating Module 5, with a required Apptainer result-validation workflow. The individual cluster assignment, module quiz and group milestone are separate activities.
 
 [Notebook](M5S5_vector_search_integration.ipynb)
 
-JupyterLab **File → Open from URL**:
+Raw URL for JupyterLab **File → Open from URL**:
 
 https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m5s5-vector-search-2026/sessions/M5S5_vector_search_integration/M5S5_vector_search_integration.ipynb
 
-Save your own copy. Run the Python 3 cells in order. The notebook embeds every source/helper/batch file, so opening the raw notebook alone is sufficient. It creates a new owned working folder; no packages are installed. Read and edit `site_env.sh` using the actual SciTech module names before submitting.
+Save your own copy and run the Python 3 cells in order. The notebook embeds all C, Python, shell and batch files and writes a new owned work folder. No package installation or image download is performed.
 
-## Five experiments
+## Module 5 practice map
 
-1. Independent tiny Python reference versus actual serial C top-1 search.
-2. Serial / OpenMP 1, 2, 4 threads, three repetitions each in a separate Slurm job.
-3. Optional hybrid 2 MPI ranks × 2 OpenMP threads, same four-CPU budget.
-4. Optional existing compatible Apptainer C/OpenMP image; compile inside it and check numerical results.
-5. Actual-record tables/plot, phase evidence and a one-parameter query-count experiment.
+| Earlier session | Actual practice here |
+|---|---|
+| M5S1: hybrid patterns | MPI shards, local OpenMP work, equal four-CPU layout comparison where site MPI works |
+| M5S2: scalable applications | Independent correctness fixture, actual team counts, repeated timings, communication/selection evidence |
+| M5S3: portability/reproducibility | Inspect modules/wrapper paths; execute Python result validation inside an existing Apptainer image; binds, clean environment, explicit variable forwarding, image/input/script hashes |
+| M5S4: project workshop | Keep a runnable, traceable compute-to-validation workflow and explain limitations for a project handover |
 
-The generated data represent a retrieval workload but are not real semantic embeddings. Exact top-1 IDs and scores are checked, with smaller ID breaking exact score ties. Generation and normalization are outside the search timing region. Search-phase throughput is not service latency.
+The C search uses deterministic synthetic vectors; it does not evaluate semantic relevance. Native C outputs are checked against serial/independent references. The core container stage replays validation and analysis of these files; it does not claim C execution inside the Python image.
 
-## Cluster terminal route
+## Run
 
-Use the [SciTech guide](../../cluster/README.md). If using the repository files directly, copy this session directory to an owned work area first. In that directory:
+Use the [SciTech guide](../../cluster/README.md). Work under your shared home directory, not a compute node's `/tmp`. Edit `site_env.sh` with the actual compatible module commands and the approved existing **Python 3 SIF** path in `M5S5_IMAGE`.
 
 ```bash
-# Edit site_env.sh to load the site's actual GCC/OpenMP toolchain.
 sbatch cpu.sbatch
-squeue -u "$USER"
-# Inspect m5s5-cpu-JOBID.out and results/*.json.
-# Optional, after loading matching MPI modules:
-sbatch hybrid.sbatch
-# Optional, with an existing trusted gcc/OpenMP image configured in site_env.sh:
+# After it completes, inspect the raw results and workflow_manifest.json.
 sbatch container.sbatch
-# Sensitivity: change only the query count, keep other settings fixed:
-sbatch --export=ALL,M5S5_QUERIES=8 cpu.sbatch
+# Where a working compatible MPI stack is available:
+sbatch hybrid.sbatch
+# Optional C-in-container extension, requiring a gcc/OpenMP image:
+sbatch container_c.sbatch
 ```
 
-No account/QoS, downloads, direct compute-node SSH, GPU allocation or package installation is required. Each job requests one node, four CPUs total, 1 GB, six minutes. Do not submit all optional experiments unless useful. Queue wait is additional. The notebook does not block waiting indefinitely or resubmit automatically.
+CPU/hybrid allocations request one node, four CPUs total, 1 GB and six minutes. Container replay uses one CPU, 256 MB and three minutes. Keep compute jobs separate from the Jupyter kernel. Queue wait is additional. Submission is not PASS.
 
-## Evidence and validation
+The CPU stage writes actual reference/candidate files and a hash manifest. The replay stage refuses stale source/inputs, compares host versus container numerical results, records environment differences, explicitly forwards a sentinel variable, and expects rejection of a deliberately corrupted copy. Read-only input and writable output binds are part of the experiment.
 
-PASS is an executed numerical check; FAIL an attempted error; SKIPPED an unavailable/disabled optional route; NOT RUN has no execution evidence. Job submission alone is not PASS. If the job fails before the runner starts, inspect the scheduler/log; absence of JSON does not prove success.
+Native CPU and Apptainer replay are core activities. A missing image/runtime is NOT RUN for the required replay, not automatic completion. The instructor must verify image access before student release. MPI failure requires the actual diagnostic and the documented CPU route where applicable; no runtime result is invented. Spack and workflow tools are discussed by role; no Spack installation or advanced DSL syntax is required.
 
-Instructor local validation: all seven notebook code cells executed; tiny independent Python/C reference passed; serial and OpenMP passed for 1/2/4 threads, including odd/small sizes; twelve default-workload repetitions checked against the serial reference; deliberate wrong-result rejection passed; batch files passed shell syntax checks. No optional MPI, Slurm or Apptainer execution occurred locally. **SciTech validation is NOT RUN.** Module names, launch integration and compatible image path must be verified on site. Cleared notebook outputs contain no fabricated performance results. Optional plotting uses an existing matplotlib installation; the table/CSV work without it.
+## Evidence and validation boundary
 
-Primary reference: official 2026–27 syllabus Sessions 21–25. Repository conventions: M4S5 guided lab, M5S3 container notebook, cluster guide. No change to course grading weights is made by this notebook.
+The notebook has 20 cells, 9 code cells; published outputs are cleared. Local tests executed all nine cells and actual-record analysis. Serial/OpenMP small/odd/default checks, an independent tiny Python reference, default repetitions and deliberate wrong-result rejection passed. New replay payload tests passed natively for top-1/top-k, ties, boundary cases, corrupted scores, source/input drift and CLI provenance.
+
+Instructor-provided SciTech job **24922**, host **haskell**, passed native serial build, independent fixtures, checker negative tests, Q=32/Q=64 baseline workloads and guided OpenMP teams 1/2/4. Its MPI link failed with mixed EESSI/system OpenMPI paths. This is evidence for those core C computations, not a successful MPI result. The newly revised manifest/container workflow still requires a fresh site run. **Actual Apptainer binds, clean environment and forwarding: NOT RUN until site execution evidence exists.** A real approved Python SIF path is required; none is guessed here.
