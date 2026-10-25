@@ -28,3 +28,7 @@ PASS means the executed check succeeded. FAIL means attempted failure. NOT RUN m
 Instructor-provided SciTech job 24922 on haskell passed the baseline, independent/checker fixtures, full-size workloads and guided OpenMP; it failed MPI linking with mixed EESSI/system OpenMPI paths. The revised Python-in-container replay still needs actual site execution with the configured image.
 
 Local validation passed the replay payload for top-1/top-k, ties, boundary cases, corrupted outputs and CLI provenance. Manifest tests reject stale source/input hashes and local-only provenance in the required Slurm route. All nine revised notebook code cells ran locally. Local workstation mode (`bash m5s5_check.sh --local`) never claims SciTech execution and will remain INCOMPLETE for required Slurm/Apptainer capabilities. Never use local mode to benchmark on a cluster login node.
+
+## Updated SciTech evidence
+
+Instructor-provided job **24943** completed with all attempted checks PASS: serial build, independent/checker fixtures, main/sensitivity baseline workloads, guided OpenMP, guided MPI and shared-image Apptainer replay including binds, environment forwarding and deliberate-error rejection. Shared image: `/data/software/containers/pytorch-2.8.0-cuda12.8.sif`. The student starter's `site_env.sh` contains the tested native configuration. This supersedes the earlier unresolved replay status above. No student optimized top-k implementation is supplied or claimed validated.
