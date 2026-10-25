@@ -26,3 +26,9 @@ cat /home/odiez/m4s5-assignment-validation/check.pOT2ix/b256/ASSIGNMENT_SUMMARY.
 ```
 
 The guided notebook is separately validated by SciTech job 24983. The notebook verifier remains `verify_cluster.sh` in this directory. A baseline/negative-test PASS does not validate a student's future correction or establish authorship.
+
+## Confirmed assignment preflight results: jobs 24984 and 24985
+
+Instructor-provided console output confirms both jobs COMPLETED, exit code 0:0, elapsed 43 seconds each. Configurations: N=4096, epochs=6, seed=3068; global batches 128 and 256 respectively. Both passed the supplied baseline/C/real DDP/candidate/recovery/inference check and the intentional unequal-shard error detection. Overall PREFLIGHT ONLY PASS; student correction/full-training comparison intentionally NOT RUN. This supersedes the earlier pending status for these two jobs.
+
+Fresh checks after the student/instructor file separation were submitted as jobs 24986 and 24987 in `check.30kJA0/b128` and `check.30kJA0/b256`. Their completed summaries have not yet been supplied. Do not infer success from submission.
