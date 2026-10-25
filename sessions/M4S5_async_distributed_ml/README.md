@@ -2,6 +2,15 @@
 
 Part 1 is a guided notebook. Part 2 will be a separate individual cluster assignment; the conceptual quiz has a different purpose. This branch currently delivers **Part 1 only**, ready for instructor validation on SciTech before assignment/slides are finalized.
 
+
+## SciTech validation: PASS (job 24983)
+
+Instructor-provided executed notebook HTML confirms all six required checks passed on haskell, 25 October 2026, using the shared image and PyTorch 2.8.0+cu128. See `validation/scitech_24983.json` for extracted evidence and its source hash. This supersedes the earlier NOT RUN cluster status below; the local report remains a separate historical record.
+
+The DDP serial-update maximum parameter difference was 2.78e-17; final 1-worker versus 2-worker differences were 1.67e-16. Replica parameter difference was zero. Recovery from step four after interruption at step seven matched uninterrupted training exactly. Median CPU training times were 0.039802 s (one worker) and 0.155763 s (two): a slower two-worker result is expected to be possible for this tiny workload and is not a correctness failure. Candidate selection and batched inference passed too.
+
+No executable code changed when recording this evidence. Re-running the verifier reuses job 24983 for unchanged sources/configuration. A new job is not necessary merely to repeat the same validation.
+
 ## Open in JupyterLab
 
 Use File -> Open from URL:
