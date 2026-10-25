@@ -62,6 +62,8 @@ def main():
             assert result['ranks']==ranks and result['threads']==threads, 'Runtime did not use the requested team size'
             return result, cmd
         reference, _ = run(ROOT/'search_serial')
+        reference_name=label+'-reference.json'
+        (out/reference_name).write_text(json.dumps(reference,indent=2)+'\n')
         if a.mode == 'cpu':
             command([cc,'-O3','-std=c11','-fopenmp','search.c','-lm','-o','search_omp'])
             configurations = [('serial',ROOT/'search_serial',1,1,None)] + [(f'omp-{t}',ROOT/'search_omp',1,t,None) for t in [1,2,4]]
@@ -103,7 +105,15 @@ def main():
                 equivalent(result,reference)
                 record = dict(configuration=name,repeat=repeat+1,status='PASS',command=cmd,**result)
                 records.append(record)
+                candidate_name=label+'-'+name+'-'+str(repeat+1)+'.json'
+                (out/candidate_name).write_text(json.dumps(record,indent=2)+'\n')
                 print(json.dumps(record),flush=True)
+        if a.mode=='cpu':
+            manifest=dict(reference='results/'+reference_name,candidate='results/'+candidate_name,
+                          reference_sha256=hashlib.sha256((out/reference_name).read_bytes()).hexdigest(),
+                          candidate_sha256=hashlib.sha256((out/candidate_name).read_bytes()).hexdigest(),
+                          source_sha256=meta['source_sha256'],cpu_job_id=meta['job_id'],execution=meta['execution'])
+            (ROOT/'workflow_manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
         meta['status']='PASS'
     except Exception as e:
         meta.update(status='FAIL',reason=str(e),traceback=traceback.format_exc())
