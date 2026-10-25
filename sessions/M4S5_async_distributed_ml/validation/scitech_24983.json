@@ -1,0 +1,67 @@
+{
+  "source": "Instructor-supplied executed notebook HTML export",
+  "source_sha256": "04165fcaac220fba8a9691bd720fdbf0c06227e9a685a4177ef9d6f42a6aa021",
+  "validation_date": "2026-10-25",
+  "execution": "SLURM",
+  "job_id": "24983",
+  "host": "haskell",
+  "overall": "PASS",
+  "torch_version": "2.8.0+cu128",
+  "config": {
+    "samples": 2048,
+    "epochs": 6,
+    "global_batch": 128,
+    "seed": 2026
+  },
+  "checks": [
+    {
+      "name": "Data split, shards and prepared-data cache",
+      "status": "PASS"
+    },
+    {
+      "name": "C gradient fixture and unequal-shard reasoning",
+      "status": "PASS"
+    },
+    {
+      "name": "Real Gloo DDP: serial-equivalent update and controlled scaling",
+      "status": "PASS"
+    },
+    {
+      "name": "Fan-out, validation-based fan-in and held-out test",
+      "status": "PASS"
+    },
+    {
+      "name": "Actual child interruption, checkpoint and restart",
+      "status": "PASS"
+    },
+    {
+      "name": "Batched inference and monitoring record",
+      "status": "PASS"
+    }
+  ],
+  "measurements": {
+    "serial_update_max_difference": 2.7755575615628914e-17,
+    "replica_max_parameter_difference": 0.0,
+    "full_training_1_vs_2_worker_max_difference": 1.6653345369377348e-16,
+    "median_training_seconds": {
+      "one_worker": 0.039802,
+      "two_workers": 0.155763
+    },
+    "reported_speedup": 0.256,
+    "reported_two_worker_efficiency": 0.128,
+    "selected_learning_rate": 0.3,
+    "held_out_test_accuracy": 0.912109375,
+    "checkpoint": {
+      "failure_after_step": 7,
+      "resumed_from_step": 4,
+      "replayed_steps": 3,
+      "final_parameter_difference": 0.0
+    }
+  },
+  "limitations": [
+    "Evidence extracted from notebook output, not a direct SSH session.",
+    "One-node CPU Gloo execution only; no GPU or multi-node performance claim.",
+    "Guided notebook validated; no future student implementation or authorship claim.",
+    "Median times are rounded as printed by the notebook."
+  ]
+}
