@@ -1,0 +1,13 @@
+{
+  "execution": "LOCAL",
+  "scope": "Independent numerical kernel checks, not real Gloo DDP or SciTech execution",
+  "status": "PASS",
+  "seed": 3068,
+  "samples": 4096,
+  "naive_unequal_max_difference": 0.0016178181105576672,
+  "sample_weighted_reference_max_difference": 2.7755575615628914e-17,
+  "student_function_deliberately_unimplemented": true,
+  "batch_128_and_256_coverage": "PASS",
+  "Gloo_DDP_assignment_harness": "NOT RUN; authoring socket restrictions; run instructor preflight on SciTech",
+  "guided_ancestor": "Actual six-check PASS from SciTech job 24983 at N=2048; does not by itself validate assignment N=4096"
+}

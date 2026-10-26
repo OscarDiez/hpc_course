@@ -1,0 +1,8 @@
+{
+  "execution": "LOCAL",
+  "status": "PASS",
+  "scope": "Independent math/sharding checks; no Gloo or DDP process execution",
+  "complete_epoch_ids_exactly_once": true,
+  "per_step_same_global_ids_at_world_sizes_1_and_2": true,
+  "serial_vs_explicit_averaged_local_gradient_max_difference": 2.7755575615628914e-17
+}

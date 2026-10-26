@@ -1,0 +1,110 @@
+{
+  "status": "SKIPPED",
+  "execution": "LOCAL",
+  "job_id": null,
+  "host": "50c1871fcef1",
+  "config": {
+    "samples": 2048,
+    "epochs": 6,
+    "global_batch": 128,
+    "seed": 2026
+  },
+  "torch_version": "2.14.1+cpu",
+  "source_sha256": "90427deff1245f9e2800e31392057e7f26a3d630fe98334c36ec6d7aa087b1ce",
+  "checks": [
+    {
+      "name": "Data split, shards and prepared-data cache",
+      "status": "PASS",
+      "result": {
+        "status": "PASS",
+        "training_samples": 2048,
+        "validation_samples": 512,
+        "test_samples": 512,
+        "sha256": "6c3cb21cb269f30d05147ce3c4a4569e24b91ebe19c043f61f2306e99e20a35c",
+        "cached_tensors_equal": true,
+        "feature_count": 16
+      }
+    },
+    {
+      "name": "C gradient fixture and unequal-shard reasoning",
+      "status": "PASS",
+      "result": "serial gradient=-44.000000 weighted=-44.000000 equal-local-mean=-38.333333\nupdated weight=0.440000; C fixture: PASS\n"
+    },
+    {
+      "name": "Real Gloo DDP: serial-equivalent update and controlled scaling",
+      "status": "SKIPPED",
+      "error": "Local validation explicitly omitted DDP; real Gloo socket setup is blocked in the authoring environment"
+    },
+    {
+      "name": "Fan-out, validation-based fan-in and held-out test",
+      "status": "PASS",
+      "result": {
+        "candidates": [
+          {
+            "learning_rate": 0.03,
+            "validation_accuracy": 0.845703125,
+            "training_seconds": 0.15281982800024707,
+            "pid": 13,
+            "model": "candidate-0.03.pt"
+          },
+          {
+            "learning_rate": 0.12,
+            "validation_accuracy": 0.884765625,
+            "training_seconds": 0.08743834300003073,
+            "pid": 16,
+            "model": "candidate-0.12.pt"
+          },
+          {
+            "learning_rate": 0.3,
+            "validation_accuracy": 0.916015625,
+            "training_seconds": 0.08586823900031959,
+            "pid": 13,
+            "model": "candidate-0.3.pt"
+          }
+        ],
+        "selected": {
+          "learning_rate": 0.3,
+          "validation_accuracy": 0.916015625,
+          "training_seconds": 0.08586823900031959,
+          "pid": 13,
+          "model": "candidate-0.3.pt"
+        },
+        "test_accuracy": 0.912109375,
+        "parallelism": "independent candidate processes; no gradient synchronization"
+      }
+    },
+    {
+      "name": "Actual child interruption, checkpoint and restart",
+      "status": "PASS",
+      "result": {
+        "expected_child_exit": 75,
+        "failure_after_step": 7,
+        "resumed_from_step": 4,
+        "replayed_steps": 3,
+        "completed_steps": 12,
+        "max_parameter_difference": 0.0,
+        "optimizer_state_restored": true
+      }
+    },
+    {
+      "name": "Batched inference and monitoring record",
+      "status": "PASS",
+      "result": {
+        "measurements": [
+          {
+            "batch": 1,
+            "compute_call_ms": 0.04942837000271538,
+            "examples_per_second": 20231.296317177043
+          },
+          {
+            "batch": 32,
+            "compute_call_ms": 0.06263319000026968,
+            "examples_per_second": 510911.22773504304
+          }
+        ],
+        "scope": "CPU inference calls only; no network or queue latency"
+      }
+    }
+  ],
+  "image_sha256_record": null
+}
