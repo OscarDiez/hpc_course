@@ -2,70 +2,122 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-/* Write the grid dimensions and temperatures in a text file. */
-void save_grid(const char *name, const double *t, int n) {
-    FILE *f = fopen(name, "w");
-    if (!f) { perror(name); exit(1); }
-    fprintf(f, "# vtk DataFile Version 3.0\nHeat plate, Celsius\nASCII\n");
-    fprintf(f, "DATASET STRUCTURED_POINTS\nDIMENSIONS %d %d 1\n", n, n);
-    fprintf(f, "ORIGIN 0 0 0\nSPACING 1 1 1\nPOINT_DATA %d\n", n*n);
-    fprintf(f, "SCALARS Temperature double 1\nLOOKUP_TABLE default\n");
-    for (int k = 0; k < n*n; k++) fprintf(f, "%.17g\n", t[k]);
-    if (fclose(f) != 0) exit(1);
-}
+void save_grid(const char *name, const double *temperatures, int n);
 
 int main(int argc, char **argv) {
-    int rank, ranks;
+    int rank;
+    int ranks;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &ranks);
-    if (argc != 4) MPI_Abort(MPI_COMM_WORLD, 1);
-    int n = atoi(argv[1]), steps = atoi(argv[2]);
-    /* Equal blocks keep this example short: N-2 must divide by ranks. */
-    if (n < 3 || n > 4096 || steps < 1 || steps > 100000 || ranks > n-2 || (n-2)%ranks != 0)
+    if (argc != 4) {
         MPI_Abort(MPI_COMM_WORLD, 1);
-    int rows = (n-2)/ranks;
-    double *old = calloc((size_t)(rows+2)*n, sizeof(double));
-    double *next = calloc((size_t)(rows+2)*n, sizeof(double));
-    if (!old || !next) MPI_Abort(MPI_COMM_WORLD, 1);
-    /* Each rank has two halo rows. Rank 0's top halo is the hot edge. */
-    if (rank == 0) for (int x = 0; x < n; x++) old[x] = next[x] = 100.0;
-    int up = rank == 0 ? MPI_PROC_NULL : rank-1;
-    int down = rank == ranks-1 ? MPI_PROC_NULL : rank+1;
-    fprintf(stderr, "rank %d/%d: %d interior rows\n", rank, ranks, rows);
+    }
+    /* Read the grid size and number of time steps from the command line. */
+    int n = atoi(argv[1]);
+    int steps = atoi(argv[2]);
+    /* Split only the interior rows. Each rank receives the same number.
+       This example requires N-2 to be divisible by the number of ranks. */
+    if (n < 3 || n > 4096 || steps < 1 || steps > 100000 ||
+        ranks > n - 2 || (n - 2) % ranks != 0) {
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    int local_rows = (n - 2) / ranks;
+    double *old = calloc((size_t)(local_rows + 2) * n, sizeof(double));
+    double *next = calloc((size_t)(local_rows + 2) * n, sizeof(double));
+    if (!old || !next) {
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    /* Local row 0 and local row local_rows+1 are halos.
+       Rank 0's top halo represents the physical hot edge. */
+    if (rank == 0) {
+        for (int x = 0; x < n; x++) {
+            old[x] = 100.0;
+            next[x] = 100.0;
+        }
+    }
+    /* MPI_PROC_NULL means there is no neighbour beyond the plate edge. */
+    int previous_rank = rank == 0 ? MPI_PROC_NULL : rank - 1;
+    int next_rank = rank == ranks - 1 ? MPI_PROC_NULL : rank + 1;
+    fprintf(stderr, "rank %d/%d: %d interior rows\n", rank, ranks, local_rows);
+    /* Finish setup on every rank before timing the repeated calculation. */
     MPI_Barrier(MPI_COMM_WORLD);
     double start = MPI_Wtime();
     for (int step = 0; step < steps; step++) {
-        /* Exchange owned edge rows for neighbours' halo values. */
-        MPI_Sendrecv(old+n, n, MPI_DOUBLE, up, 0,
-                     old+(rows+1)*n, n, MPI_DOUBLE, down, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        MPI_Sendrecv(old+rows*n, n, MPI_DOUBLE, down, 1,
-                     old, n, MPI_DOUBLE, up, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        for (int y = 1; y <= rows; y++) {
-            for (int x = 1; x < n-1; x++) {
-                int k = y*n+x;
-                next[k] = 0.25*(old[k-n]+old[k+n]+old[k-1]+old[k+1]);
+        /* Send the first owned row upwards; receive the bottom halo. */
+        MPI_Sendrecv(
+            old + n, n, MPI_DOUBLE, previous_rank, 0,
+            old + (local_rows + 1) * n, n, MPI_DOUBLE, next_rank, 0,
+            MPI_COMM_WORLD, MPI_STATUS_IGNORE
+        );
+        /* Send the last owned row downwards; receive the top halo. */
+        MPI_Sendrecv(
+            old + local_rows * n, n, MPI_DOUBLE, next_rank, 1,
+            old, n, MPI_DOUBLE, previous_rank, 1,
+            MPI_COMM_WORLD, MPI_STATUS_IGNORE
+        );
+        for (int y = 1; y <= local_rows; y++) {
+            for (int x = 1; x < n - 1; x++) {
+                /* Flatten (row, column) into one array index. */
+                int index = y * n + x;
+                next[index] = 0.25 * (
+                    old[index - n] + old[index + n] +
+                    old[index - 1] + old[index + 1]
+                );
             }
         }
-        double *temporary = old; old = next; next = temporary;
+        /* Change buffer roles without copying the local grid. */
+        double *temporary = old;
+        old = next;
+        next = temporary;
     }
     /* The step completes only when the slowest rank finishes. */
-    double elapsed = MPI_Wtime()-start, maximum;
+    double elapsed = MPI_Wtime() - start;
+    double maximum;
     MPI_Reduce(&elapsed, &maximum, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     double *plate = NULL;
     if (rank == 0) {
-        plate = calloc((size_t)n*n, sizeof(double));
-        if (!plate) MPI_Abort(MPI_COMM_WORLD, 1);
-        for (int x = 0; x < n; x++) plate[x] = 100.0;
+        plate = calloc((size_t)n * n, sizeof(double));
+        if (!plate) {
+            MPI_Abort(MPI_COMM_WORLD, 1);
+        }
+        for (int x = 0; x < n; x++) {
+            plate[x] = 100.0;
+        }
     }
-    /* Gather interior rows once, after the time stepping. */
-    MPI_Gather(old+n, rows*n, MPI_DOUBLE, rank == 0 ? plate+n : NULL,
-               rows*n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+    /* Gather only owned rows, excluding the halos.
+       Rank 0 keeps the complete plate for saving the result. */
+    MPI_Gather(
+        old + n, local_rows * n, MPI_DOUBLE,
+        rank == 0 ? plate + n : NULL, local_rows * n, MPI_DOUBLE,
+        0, MPI_COMM_WORLD
+    );
     if (rank == 0) {
         printf("mpi loop_s=%.9f\n", maximum);
         save_grid(argv[3], plate, n);
     }
-    free(old); free(next); free(plate);
+    free(old);
+    free(next);
+    free(plate);
     MPI_Finalize();
     return 0;
+}
+
+/* Write the grid dimensions and temperatures in a text file. */
+void save_grid(const char *name, const double *temperatures, int n) {
+    FILE *file = fopen(name, "w");
+    if (!file) {
+        perror(name);
+        exit(1);
+    }
+    fprintf(file, "# vtk DataFile Version 3.0\nHeat plate, Celsius\nASCII\n");
+    fprintf(file, "DATASET STRUCTURED_POINTS\nDIMENSIONS %d %d 1\n", n, n);
+    fprintf(file, "ORIGIN 0 0 0\nSPACING 1 1 1\nPOINT_DATA %d\n", n * n);
+    fprintf(file, "SCALARS Temperature double 1\nLOOKUP_TABLE default\n");
+    for (int index = 0; index < n * n; index++) {
+        fprintf(file, "%.17g\n", temperatures[index]);
+    }
+    if (fclose(file) != 0) {
+        exit(1);
+    }
 }
