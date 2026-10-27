@@ -3,7 +3,7 @@
 #include <mpi.h>
 #include <omp.h>
 
-/* VTK adds grid dimensions so ParaView can open the result directly. */
+/* Write the grid dimensions and temperatures in a text file. */
 void save_grid(const char *name, const double *t, int n) {
     FILE *f = fopen(name, "w");
     if (!f) { perror(name); exit(1); }
