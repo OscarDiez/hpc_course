@@ -43,13 +43,32 @@ PY
  module list >>"$out/environment.txt" 2>&1
 fi
 # A missing application is SKIPPED; an attempted but failed render is FAIL.
-if ! command -v pvpython >/dev/null;then
- echo 'SKIPPED_PARAVIEW: pvpython unavailable; see available-modules.txt and environment.txt'
+renderer=$(command -v pvbatch || command -v pvpython || true)
+if [[ -z "$renderer" ]];then
+ echo 'SKIPPED_PARAVIEW: pvbatch/pvpython unavailable; see available-modules.txt and environment.txt'
  exit 0
 fi
-command -v pvpython | tee -a "$out/environment.txt"
-pvpython --version >>"$out/environment.txt" 2>&1
+# pvbatch does not need an interactive window or a notebook display connection.
+echo "PARAVIEW_EXECUTABLE=$renderer" | tee -a "$out/environment.txt"
+"$renderer" --version >>"$out/environment.txt" 2>&1
+# This is a CPU allocation. Use Mesa's CPU renderer instead of opening /dev/dri.
+# These settings apply only to this visualisation job, not the CUDA experiment.
+export LIBGL_ALWAYS_SOFTWARE=true
+export GALLIUM_DRIVER=llvmpipe
+export EGL_PLATFORM=surfaceless
+export LP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-1}
+unset DISPLAY WAYLAND_DISPLAY PV_DEBUG_REMOTE_RENDERING
+ulimit -c 0
+printf 'LIBGL_ALWAYS_SOFTWARE=%s\nGALLIUM_DRIVER=%s\nEGL_PLATFORM=%s\nLP_NUM_THREADS=%s\n' \
+ "$LIBGL_ALWAYS_SOFTWARE" "$GALLIUM_DRIVER" "$EGL_PLATFORM" "$LP_NUM_THREADS" >>"$out/environment.txt"
 # Runs only after a validated CPU field exists. Both paths are on shared user storage.
 python3 scripts/export_vtk.py "$HEAT_INPUT" "$N" "$out/temperature.vtk"
-pvpython --force-offscreen-rendering scripts/paraview_heat.py "$out/temperature.vtk" "$N" "$out"
-echo "PARAVIEW_DONE $out"
+echo 'STEP render ParaView image with Mesa software rendering'
+if "$renderer" --force-offscreen-rendering scripts/paraview_heat.py "$out/temperature.vtk" "$N" "$out";then
+ echo "PARAVIEW_DONE $out"
+else
+ code=$?
+ echo "PARAVIEW_RENDER_FAILED exit=$code. Inspect environment.txt and this log."
+ echo 'The loaded ParaView/Mesa build must support software headless rendering.'
+ exit "$code"
+fi

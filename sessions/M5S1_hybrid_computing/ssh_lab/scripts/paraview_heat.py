@@ -1,8 +1,8 @@
-"""Run with pvpython, not the notebook's Python interpreter."""
+"""Run with pvbatch (or pvpython), not the notebook's Python interpreter."""
 from pathlib import Path
 import json,sys
 from paraview.simple import (OpenDataFile,GetActiveViewOrCreate,Show,ColorBy,
- GetColorTransferFunction,Render,SaveScreenshot,SaveState,SaveData,PlotOverLine)
+ GetColorTransferFunction,SaveScreenshot,SaveState,SaveData,PlotOverLine)
 source=Path(sys.argv[1]).resolve();n=int(sys.argv[2]);out=Path(sys.argv[3]).resolve();out.mkdir(parents=True,exist_ok=True)
 # Read the grid into ParaView and confirm the dimensions and scalar range.
 field=OpenDataFile(str(source));field.UpdatePipeline()
@@ -26,8 +26,10 @@ display.SetScalarBarVisibility(view,True)
 view.ViewSize=[1000,800];view.CameraParallelProjection=1
 view.CameraPosition=[(n-1)/2,(n-1)/2,2*n];view.CameraFocalPoint=[(n-1)/2,(n-1)/2,0]
 view.CameraViewUp=[0,-1,0];view.CameraParallelScale=n*.6
-# The batch launcher requests offscreen rendering; save the actual rendered image.
-Render(view);SaveScreenshot(str(out/'paraview-temperature.png'),view,ImageResolution=[1000,800])
+# StillRender renders the view without creating a mouse/keyboard interactor.
+# simple.Render creates an X interactor in pvpython 5.11, even in offscreen mode.
+view.StillRender()
+SaveScreenshot(str(out/'paraview-temperature.png'),view,ImageResolution=[1000,800])
 # A state file saves the pipeline/view settings, not the input field itself.
 SaveState(str(out/'heat.pvsm'))
 assert (out/'paraview-temperature.png').is_file()
