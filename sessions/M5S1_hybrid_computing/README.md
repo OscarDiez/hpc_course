@@ -19,3 +19,5 @@ Raw notebook URL:
 https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m5s1-hybrid-patterns-2026/sessions/M5S1_hybrid_computing/M5S1_hybrid_computing.ipynb
 
 The final results table reports complete CPU field comparisons, the known first-step row, measured loop times, the repeated batch check and a fresh GPU PASS/SKIPPED/FAILED status. It uses the same shell commands in SSH and Jupyter.
+
+The Jupyter shell runner removes inherited Slurm allocation and step variables from its child environment while preserving client configuration and account/QOS preferences. This prevents a four-core hybrid request from being treated as a step inside a smaller notebook job. The notebook session itself is unchanged; srun requests new resources. Batch scripts retain their own fresh Slurm environment for their internal steps.
