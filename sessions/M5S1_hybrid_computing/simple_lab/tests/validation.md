@@ -1,13 +1,15 @@
-# Local validation of the shorter M5S1 notebook
+# Local checks for M5S1 basics
 
-- 53 checks passed against an independent Python heat solver: six grid/step cases, naive and optimised serial, OpenMP, real MPI/hybrid with one to three ranks where the equal-row layout permits them, recorded worker counts, and rejection of an invalid layout.
-- GCC 13.3, MPICH 5.0.2; local container transport used `MPIR_CVAR_CH4_NETMOD=ofi FI_PROVIDER=tcp MPIR_CVAR_CH4_SHM=none MPIR_CVAR_CH4_CMA_ENABLE=0` because container restrictions prevent CMA access. These are local test settings, not SciTech instructions.
-- Complete notebook code executed with a local Slurm shim and real CPU programs. All 18 field outputs passed, first-step checks passed, real gprof output was collected. The harness deliberately marked the GPU job failed and ParaView unavailable, and the notebook reported them accordingly.
-- Notebook schema, Python syntax, Bash block syntax and embedded-file parity checked. OpenACC source compiled with GCC for syntax checking; this does not validate NVIDIA execution.
-- No SciTech submission, GPU execution or ParaView rendering was performed for this rewrite. No cluster performance numbers are supplied.
+41 checks passed against an independent Python reference in the test code: six grid/step cases, serial, OpenMP, MPI/hybrid with one to three ranks for compatible layouts, correct VTK dimensions/values, ownership labels and rejection of an invalid layout. The student notebook itself contains no Python heat simulation or numerical validator.
 
-Run the numerical check from an environment with `gcc`, `mpicc`, `mpiexec` and Python:
+All notebook code cells executed with IPython, including the writefile magics. A local scheduler shim ran the actual CPU batch commands, GCC/OpenMP/MPICH programs, field comparisons and gprof. The shim deliberately failed the GPU job and made ParaView unavailable. The notebook displayed those outcomes and did not fabricate an image.
+
+Local environment: GCC 13.3, MPICH 5.0.2. Container-only MPI settings were `MPIR_CVAR_CH4_NETMOD=ofi FI_PROVIDER=tcp MPIR_CVAR_CH4_SHM=none MPIR_CVAR_CH4_CMA_ENABLE=0`, because CMA access is restricted. These settings are not student or SciTech instructions.
+
+OpenACC source compiled with GCC for syntax checking. This is not NVIDIA execution. No SciTech job or actual ParaView render was run for this rewrite. Local timing values are not presented as cluster measurements.
+
+With gcc, mpicc, mpiexec and Python available, run:
 
 ```bash
-python3 tests/check_simple.py
+python3 tests/check_basics.py
 ```

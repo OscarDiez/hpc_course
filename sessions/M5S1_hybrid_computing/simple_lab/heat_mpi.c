@@ -1,85 +1,71 @@
-/* MPI owns rows; OpenMP can share the rows within each MPI process. */
-#include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef _OPENMP
-#include <omp.h>
-#endif
+#include <mpi.h>
+
+/* VTK adds grid dimensions so ParaView can open the result directly. */
+void save_grid(const char *name, const double *t, int n) {
+    FILE *f = fopen(name, "w");
+    if (!f) { perror(name); exit(1); }
+    fprintf(f, "# vtk DataFile Version 3.0\nHeat plate, Celsius\nASCII\n");
+    fprintf(f, "DATASET STRUCTURED_POINTS\nDIMENSIONS %d %d 1\n", n, n);
+    fprintf(f, "ORIGIN 0 0 0\nSPACING 1 1 1\nPOINT_DATA %d\n", n*n);
+    fprintf(f, "SCALARS Temperature double 1\nLOOKUP_TABLE default\n");
+    for (int k = 0; k < n*n; k++) fprintf(f, "%.17g\n", t[k]);
+    if (fclose(f) != 0) exit(1);
+}
 
 int main(int argc, char **argv) {
-    int rank, ranks, provided;
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_FUNNELED, &provided);
+    int rank, ranks;
+    MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &ranks);
-    if (argc != 4 || provided < MPI_THREAD_FUNNELED) MPI_Abort(MPI_COMM_WORLD, 1);
+    if (argc != 4) MPI_Abort(MPI_COMM_WORLD, 1);
     int n = atoi(argv[1]), steps = atoi(argv[2]);
-    /* Equal row blocks keep this teaching example short. */
-    if (n < 3 || n > 4096 || steps < 1 || steps > 100000 || (n-2) % ranks != 0 || ranks > n-2) {
-        if (rank == 0) fprintf(stderr, "Need N>=3, STEPS>=1 and N-2 divisible by the rank count.\n");
+    /* Equal blocks keep this example short: N-2 must divide by ranks. */
+    if (n < 3 || n > 4096 || steps < 1 || steps > 100000 || ranks > n-2 || (n-2)%ranks != 0)
         MPI_Abort(MPI_COMM_WORLD, 1);
-    }
-    int rows = (n-2) / ranks;
-    size_t count = (size_t)(rows+2) * n;
-    double *old = calloc(count, sizeof(double));
-    double *next = calloc(count, sizeof(double));
+    int rows = (n-2)/ranks;
+    double *old = calloc((size_t)(rows+2)*n, sizeof(double));
+    double *next = calloc((size_t)(rows+2)*n, sizeof(double));
     if (!old || !next) MPI_Abort(MPI_COMM_WORLD, 1);
-    /* Row 0 and row rows+1 are halos. Rank 0's upper halo is the hot edge. */
+    /* Each rank has two halo rows. Rank 0's top halo is the hot edge. */
     if (rank == 0) for (int x = 0; x < n; x++) old[x] = next[x] = 100.0;
     int up = rank == 0 ? MPI_PROC_NULL : rank-1;
     int down = rank == ranks-1 ? MPI_PROC_NULL : rank+1;
-    int threads = 1;
-    const char *mode = "mpi";
-#ifdef _OPENMP
-    mode = "hybrid";
-    #pragma omp parallel
-    {
-        #pragma omp single
-        threads = omp_get_num_threads();
-    }
-#endif
-    fprintf(stderr, "rank %d/%d owns %d interior rows, threads=%d\n", rank, ranks, rows, threads);
+    fprintf(stderr, "rank %d/%d: %d interior rows\n", rank, ranks, rows);
     MPI_Barrier(MPI_COMM_WORLD);
     double start = MPI_Wtime();
     for (int step = 0; step < steps; step++) {
-        /* Send our first row up; receive the lower neighbour into our bottom halo. */
+        /* Exchange owned edge rows for neighbours' halo values. */
         MPI_Sendrecv(old+n, n, MPI_DOUBLE, up, 0,
-                     old+(size_t)(rows+1)*n, n, MPI_DOUBLE, down, 0,
-                     MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        /* Send our last row down; receive the upper neighbour into our top halo. */
-        MPI_Sendrecv(old+(size_t)rows*n, n, MPI_DOUBLE, down, 1,
+                     old+(rows+1)*n, n, MPI_DOUBLE, down, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        MPI_Sendrecv(old+rows*n, n, MPI_DOUBLE, down, 1,
                      old, n, MPI_DOUBLE, up, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-#ifdef _OPENMP
-        #pragma omp parallel for collapse(2) schedule(static)
-#endif
         for (int y = 1; y <= rows; y++) {
             for (int x = 1; x < n-1; x++) {
-                size_t k = (size_t)y*n+x;
+                int k = y*n+x;
                 next[k] = 0.25*(old[k-n]+old[k+n]+old[k-1]+old[k+1]);
             }
         }
         double *temporary = old; old = next; next = temporary;
     }
-    /* Report the slowest rank, since all ranks are needed to finish the step. */
+    /* The step completes only when the slowest rank finishes. */
     double elapsed = MPI_Wtime()-start, maximum;
     MPI_Reduce(&elapsed, &maximum, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
-    double *global = NULL;
+    double *plate = NULL;
     if (rank == 0) {
-        global = calloc((size_t)n*n, sizeof(double));
-        if (!global) MPI_Abort(MPI_COMM_WORLD, 1);
-        for (int x = 0; x < n; x++) global[x] = 100.0;
+        plate = calloc((size_t)n*n, sizeof(double));
+        if (!plate) MPI_Abort(MPI_COMM_WORLD, 1);
+        for (int x = 0; x < n; x++) plate[x] = 100.0;
     }
-    /* Gather only owned rows; the root keeps the physical top/bottom edges. */
-    MPI_Gather(old+n, rows*n, MPI_DOUBLE, rank == 0 ? global+n : NULL,
+    /* Gather interior rows once, after the time stepping. */
+    MPI_Gather(old+n, rows*n, MPI_DOUBLE, rank == 0 ? plate+n : NULL,
                rows*n, MPI_DOUBLE, 0, MPI_COMM_WORLD);
     if (rank == 0) {
-        FILE *file = fopen(argv[3], "wb");
-        if (!file) MPI_Abort(MPI_COMM_WORLD, 1);
-        size_t written = fwrite(global, sizeof(double), (size_t)n*n, file);
-        int closed = fclose(file);
-        if (written != (size_t)n*n || closed != 0) MPI_Abort(MPI_COMM_WORLD, 1);
-        printf("%s,%d,%d,%d,%d,%.9f\n", mode, n, steps, ranks, threads, maximum);
+        printf("mpi loop_s=%.9f\n", maximum);
+        save_grid(argv[3], plate, n);
     }
-    free(old); free(next); free(global);
+    free(old); free(next); free(plate);
     MPI_Finalize();
     return 0;
 }

@@ -1,17 +1,19 @@
-# M5.S1 Hybrid computing
+# M5.S1 Hybrid computing basics
 
-Start with [M5S1_hybrid_computing.ipynb](M5S1_hybrid_computing.ipynb). This is the shorter student practical: 29 cells, two C programs, direct compile/run commands and six checkpoints.
+Open [M5S1_hybrid_computing.ipynb](M5S1_hybrid_computing.ipynb).
 
-The sequence is heat diffusion, a serial baseline, removal of array copying, compiler optimisation, OpenMP, MPI, hybrid MPI/OpenMP, measurements, profiling and ParaView. OpenACC is a GPU extension using the same heat source. A larger experiment asks students to predict and explain changes.
+Each implementation has its own complete C file: serial, OpenMP, MPI and hybrid MPI/OpenMP. There are no conditional-compilation switches. The OpenACC heat solver is an optional extension. Read the stencil first and follow the compile/run commands beside each program.
 
-Students work in SSH. A separate teaching demonstration at the end can reproduce the practical through Run All on SciTech JupyterHub. It submits one CPU job and one OpenACC job, retains their IDs, checks complete fields and displays a ParaView screenshot only after a successful render. The default CPU request is one node, two tasks, two cores per task, 2 GiB and six minutes. The GPU request is one task and one GPU. Jobs may queue.
+Students can create the files with an SSH editor or execute the notebook's `%%writefile` cells. The solvers always run as C executables on allocated resources. Python does not simulate the plate or validate fields. Checkpoints use `sed`, `cmp`, Slurm commands and, for GPU rounding differences, an `awk` comparison. Every solver writes VTK directly.
 
-The five files shown in the notebook are also in [simple_lab](simple_lab): `heat.c`, `heat_mpi.c`, `run.slurm`, `gpu.slurm` and `view.py`. There are no separate build, submission, measurement or plotting frameworks in this route. Module names match the observed SciTech environment; inspect `module avail` if availability changes.
+The final Jupyter section sends the same shell commands through a small subprocess wrapper. It submits the CPU and OpenACC jobs with `sbatch --wait`, displays their logs and the available ParaView screenshot. Each invocation submits new jobs. The separate optional ParaView script uses ParaView's own Python API only to open the C output and save an image.
 
-The [extended notebook](M5S1_hybrid_computing_extended.ipynb) preserves the previous full material, including CUDA, the library compatibility exercise and additional slide demonstrations. Its supporting files remain in `ssh_lab`. It is optional reference material.
+The files shown in the notebook are in [simple_lab](simple_lab). One CPU batch file compiles and compares the four CPU versions, repeats each three times and saves a profile. One GPU batch file runs OpenACC and checks it against a CPU reference. There is no build, submission or measurement framework.
 
-Local validation of the shorter version passed 53 numerical, ownership and invalid-layout checks with GCC/OpenMP and real MPICH processes. The complete notebook also passed a local scheduler harness using real CPU/MPI/OpenMP/profiling execution. The scheduler was mocked; GPU execution and ParaView rendering were not verified. These tests are not measured SciTech results.
+The [extended notebook](M5S1_hybrid_computing_extended.ipynb) preserves the longer earlier CUDA, library and slide demonstrations, with its files in `ssh_lab`.
 
-Raw notebook URL for Jupyter:
+Local tests passed 41 numerical/layout checks with real serial/OpenMP/MPI/hybrid executables. The whole notebook also executed with a local scheduler shim and real CPU/profiling runs. The shim deliberately fails the GPU request and makes ParaView unavailable; these outcomes are reported rather than shown as successes. SciTech execution, NVIDIA execution and ParaView rendering remain unverified for this rewrite.
+
+Raw notebook URL:
 
 https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m5s1-hybrid-patterns-2026/sessions/M5S1_hybrid_computing/M5S1_hybrid_computing.ipynb
