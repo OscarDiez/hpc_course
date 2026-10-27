@@ -1,10 +1,13 @@
 #!/bin/bash
 # Called inside an allocation, once per program execution. Separate raw logs per trial.
 set -euo pipefail
+# Each call receives a mode, worker layout, executable, inputs and repeat number.
 mode=$1; ranks=$2; threads=$3; exe=$4; n=$5; steps=$6; out=$7; repeat=$8
 mkdir -p "$out"
+# Thread count does not allocate CPUs; the job/step resource requests do that.
 export OMP_NUM_THREADS=$threads
 log="$out/$mode-r$repeat.log"; field="$out/$mode-r$repeat.bin"
+# MPI modes need a launcher that creates a shared MPI communicator.
 if [[ "$mode" == mpi || "$mode" == hybrid ]]; then
  export LAB_EXPECT_RANKS=$ranks
  case ${MPI_LAUNCHER:-srun} in

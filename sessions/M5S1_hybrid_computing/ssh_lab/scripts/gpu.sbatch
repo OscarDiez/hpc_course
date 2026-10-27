@@ -10,6 +10,7 @@
 #SBATCH --output=gpu-%j.out
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR";export LAB_DEVICE=gpu
+# The GPU compiler stack is selected inside the GPU allocation.
 source scripts/site.sh
 n=${N:-512};steps=${STEPS:-500};repeats=${REPEATS:-3}
 out="results/gpu-$SLURM_JOB_ID";mkdir -p "$out"
@@ -18,9 +19,11 @@ out="results/gpu-$SLURM_JOB_ID";mkdir -p "$out"
  if type module >/dev/null 2>&1; then module list; fi
  sha256sum src/* scripts/*.sh scripts/*.py scripts/*.sbatch
 } >"$out/environment.txt" 2>&1
+# Compile on the assigned node and keep compiler diagnostics with this run.
 bash scripts/build.sh gpu
 sha256sum bin/* >"$out/binary-hashes.txt"
 bash scripts/measure.sh reference 1 1 bin/heat_serial "$n" "$steps" "$out" 0
+# The serial reference uses this same node, avoiding a different CPU model.
 for mode in serial cuda openacc; do
  echo "STEP $mode: execute and validate"
  case "$mode" in serial) exe=bin/heat_serial;;cuda) exe=bin/heat_cuda;;openacc)

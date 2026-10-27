@@ -11,8 +11,10 @@ set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 stage=${STAGE:-all};export LAB_DEVICE=cpu LAB_NEEDS_MPI=0
 if [[ "$stage" == mpi || "$stage" == hybrid || "$stage" == all ]]; then LAB_NEEDS_MPI=1; fi
+# Match the compiler/runtime environment before building or running binaries.
 source scripts/site.sh
 n=${N:-512};steps=${STEPS:-500};repeats=${REPEATS:-3}
+# One evidence directory per job keeps logs and measurements associated.
 out="results/cpu-$SLURM_JOB_ID";mkdir -p "$out"
 {
  date -u;hostname;pwd;echo "JOB=$SLURM_JOB_ID STAGE=$stage N=$n STEPS=$steps REPEATS=$repeats"
@@ -68,18 +70,21 @@ case "$stage" in
  all) modes=(naive serial_O0 serial openmp mpi hybrid library_v1 library_v2 library_fixed);;
  *) echo 'STAGE must be serial/openmp/mpi/hybrid/libraries/all' >&2;exit 2;;
 esac
+# Run configurations sequentially so they do not compete for the same cores.
 for mode in "${modes[@]}"; do
  echo "STEP $mode: compile complete; execute and validate"
  ranks=1;threads=1
  case "$mode" in
  naive) exe=bin/heat_naive;; serial_O0) exe=bin/heat_serial_O0;; serial) exe=bin/heat_serial;;
- mpi) exe=bin/heat_mpi;ranks=2;; openmp) exe=bin/heat_omp;threads=4;; hybrid) exe=bin/heat_hybrid;ranks=2;threads=2;;
+ mpi) exe=bin/heat_mpi;ranks=2;; openmp) exe=bin/heat_omp;threads=2;; hybrid) exe=bin/heat_hybrid;ranks=2;threads=2;;
  library_*) exe=bin/heat_library;version=${mode#library_};
  export LD_LIBRARY_PATH="$PWD/lib/$version${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
  ldd bin/heat_library >"$out/$mode-ldd.txt";;
  esac
+ # Repeat zero warms up; measured repetitions start at one.
  for ((r=0;r<=repeats;r++)); do
   bash scripts/measure.sh "$mode" "$ranks" "$threads" "$exe" "$n" "$steps" "$out" "$r"
+  # Only the deliberate Kelvin error is expected to differ from serial.
   if [[ "$mode" == library_v2 ]]; then
    python3 scripts/validate.py "$out/reference-r0.bin" "$out/$mode-r$r.bin" "$n" --expect-different
   else

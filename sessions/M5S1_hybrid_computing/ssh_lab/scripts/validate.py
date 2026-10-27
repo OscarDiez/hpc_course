@@ -3,13 +3,16 @@ import argparse, array, math
 p=argparse.ArgumentParser();p.add_argument('reference');p.add_argument('candidate');p.add_argument('n',type=int)
 p.add_argument('--expect-different',action='store_true');args=p.parse_args();n=args.n
 
+# Refuse truncated fields and NaNs before doing a numerical comparison.
 def read(path):
  a=array.array('d');a.frombytes(open(path,'rb').read())
  if len(a)!=n*n:raise SystemExit(f'FAIL {path}: expected {n*n} doubles, got {len(a)}')
  if not all(math.isfinite(x) for x in a):raise SystemExit('FAIL: non-finite temperature')
  return a
 ref=read(args.reference);got=read(args.candidate)
+# A checksum can hide errors; compare corresponding cells everywhere.
 err=max(abs(a-b) for a,b in zip(ref,got))
+# Check the physical constraints separately from agreement with reference.
 boundaries=(all(abs(got[x]-100)<1e-10 for x in range(n)) and
  all(abs(got[(n-1)*n+x])<1e-10 for x in range(n)) and
  all(abs(got[y*n])<1e-10 and abs(got[y*n+n-1])<1e-10 for y in range(1,n-1)))

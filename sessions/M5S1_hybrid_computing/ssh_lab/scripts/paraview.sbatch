@@ -10,6 +10,7 @@
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
 out="results/paraview-$SLURM_JOB_ID";mkdir -p "$out"
+# Make Environment Modules visible in this non-interactive shell.
 if ! type module >/dev/null 2>&1; then
  for init in /etc/profile.d/modules.sh /usr/share/Modules/init/bash;do
   if [[ -r "$init" ]];then source "$init";fi
@@ -21,6 +22,7 @@ fi
  if type module >/dev/null 2>&1;then module list;fi
 } >"$out/environment.txt" 2>&1
 if type module >/dev/null 2>&1; then
+ # Inspect the site catalogue instead of inventing a ParaView module version.
  module -t avail ParaView paraview >"$out/available-modules.txt" 2>&1 || true
  selected=${PARAVIEW_MODULE:-}
  if [[ -z "$selected" ]];then
@@ -40,6 +42,7 @@ PY
  fi
  module list >>"$out/environment.txt" 2>&1
 fi
+# A missing application is SKIPPED; an attempted but failed render is FAIL.
 if ! command -v pvpython >/dev/null;then
  echo 'SKIPPED_PARAVIEW: pvpython unavailable; see available-modules.txt and environment.txt'
  exit 0

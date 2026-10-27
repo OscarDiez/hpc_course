@@ -23,6 +23,7 @@ def state(job):
 def execute(root,device,settings,emit=print):
  root=Path(root);marker=root/f'automation-{device}.json'
  if not shutil.which('sbatch'):return {'device':device,'status':'NOT RUN','reason':'sbatch unavailable; open on SciTech JupyterHub'}
+ # Reuse a saved submission rather than creating another queued job.
  if marker.exists():
   record=json.loads(marker.read_text())
   if not record.get('job_id'):
@@ -34,6 +35,7 @@ def execute(root,device,settings,emit=print):
   for name in ('src','scripts'):shutil.copytree(root/name,directory/name,dirs_exist_ok=False,ignore=shutil.ignore_patterns('__pycache__','*.pyc'))
   record={'device':device,'run_dir':str(directory),'status':'SUBMITTING','job_id':None}
   save(marker,record)
+  # Slurm may reject conflicting inherited memory-request variables.
   env=os.environ.copy()
   for key in ('SLURM_MEM_PER_CPU','SLURM_MEM_PER_GPU','SLURM_MEM_PER_NODE'):env.pop(key,None)
   env.update(HEAT_INPUT=settings.get('heat_input',''),PARAVIEW_MODULE=settings.get('paraview_module',''),N=str(settings['n']),STEPS=str(settings['steps']),REPEATS=str(settings['repeats']),STAGE='all',MPI_LAUNCHER=settings.get('launcher','auto'))
@@ -57,10 +59,12 @@ def execute(root,device,settings,emit=print):
    st,reason,exit_code=state(job)
   except (OSError,subprocess.TimeoutExpired) as exc:st,reason,exit_code='UNKNOWN',str(exc),None
   log=log_path.read_text(errors='replace') if log_path.exists() else ''
+  # Stream only newly written log text while the job runs.
   if len(log)>offset:
    emit(log[offset:].rstrip());offset=len(log)
   if st!=last or time.monotonic()-last_notice>=30:
    emit(f'{device} job {job}: {st} {reason}');last=st;last_notice=time.monotonic()
+  # A completion-looking log must never overrule failed scheduler accounting.
   if st.startswith(TERMINAL_BAD) or (exit_code and exit_code!='0:0'):
    record.update(status='FAIL',reason=f'Slurm {st}, exit={exit_code}');break
   if device=='paraview' and 'SKIPPED_PARAVIEW:' in log and st not in ACTIVE:
@@ -87,6 +91,7 @@ def execute(root,device,settings,emit=print):
     if q.returncode:record.update(status='FAIL',reason=q.stderr or q.stdout)
     else:
      rows=list(csv.DictReader((evidence/'measurements.csv').open()))
+     # Require every expected mode, input and repetition before calling a run PASS.
      expected={'naive','serial_O0','serial','openmp','mpi','hybrid','library_v1','library_v2','library_fixed'} if device=='cpu' else {'serial','cuda'}
      present={r['mode'] for r in rows}
      count_ok=all(len([r for r in rows if r['mode']==m])==settings['repeats'] for m in present)
@@ -114,7 +119,7 @@ def execute(root,device,settings,emit=print):
  save(marker,record);return record
 
 def show_result(record,display,HTML):
- display(HTML(f'<h3>{html.escape(record["device"])} — {html.escape(record["status"])}</h3>'))
+ display(HTML(f'<h3>{html.escape(record["device"])} - {html.escape(record["status"])}</h3>'))
  if record.get('reason'):print(record['reason'])
  if record.get('job_id') and record.get('run_dir'):
   environment=Path(record['run_dir'])/'results'/f"{record['device']}-{record['job_id']}"/'environment.txt'
@@ -132,7 +137,36 @@ def show_result(record,display,HTML):
   cells=['<table><tr><th>Mode</th><th>Layout</th><th>Repeats</th><th>Median loop (s)</th><th>Range (s)</th><th>Check</th></tr>']
   for mode in dict.fromkeys(r['mode'] for r in rows):
    subset=[r for r in rows if r['mode']==mode];r=subset[0];values=[float(v['loop_s']) for v in subset]
-   cells.append('<tr>'+''.join('<td>'+html.escape(str(x))+'</td>' for x in [mode,f'{r["ranks"]} × {r["threads"]}',len(values),f'{statistics.median(values):.6g}',f'{min(values):.6g}–{max(values):.6g}',r['scientific_status']])+'</tr>')
+   cells.append('<tr>'+''.join('<td>'+html.escape(str(x))+'</td>' for x in [mode,f'{r["ranks"]} × {r["threads"]}',len(values),f'{statistics.median(values):.6g}',f'{min(values):.6g}-{max(values):.6g}',r['scientific_status']])+'</tr>')
   display(HTML(''.join(cells)+'</table>'))
  for path in record.get('plots',[]):display(HTML(Path(path).read_text()))
  for item in record.get('skipped',[]):print('SKIPPED:',item)
+
+
+def show_final(report,display,HTML):
+ """Display the actual ParaView image last, with an explicit GPU completion status."""
+ records={r['device']:r for r in report}
+ gpu=records.get('gpu',{})
+ if gpu.get('status')=='PASS':
+  rows=list(csv.DictReader((Path(gpu['evidence'])/'measurements.csv').open()))
+  modes={r['mode'] for r in rows}
+  print('CUDA heat solver: PASS; the GPU field matched its serial reference.')
+  print('OpenACC heat solver: '+('PASS; field validated.' if 'openacc' in modes else 'SKIPPED; compiler unavailable.'))
+ else:
+  print('GPU experiment:',gpu.get('status','NOT RUN'))
+  print(gpu.get('reason','No completed GPU validation is available.'))
+ pv=records.get('paraview',{})
+ display(HTML('<h3>ParaView result</h3>'))
+ image_path=Path(pv['screenshot']) if pv.get('screenshot') else None
+ if pv.get('status')=='PASS' and image_path and image_path.is_file():
+  from IPython.display import Image
+  print('Rendered by ParaView job',pv.get('job_id',''),'; input field and point count validated.')
+  display(Image(filename=str(image_path)))
+  print('Image:',image_path)
+  print('VTI, centre-line CSV and saved state:',pv.get('paraview_dir',''))
+ else:
+  print('ParaView:',pv.get('status','NOT RUN'))
+  print(pv.get('reason','No verified ParaView screenshot is available for this run.'))
+  cpu=records.get('cpu',{})
+  if cpu.get('status')=='PASS' and cpu.get('evidence'):
+   print('You can open this saved field in desktop ParaView:',Path(cpu['evidence'])/'temperature.vtk')
