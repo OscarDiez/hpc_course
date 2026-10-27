@@ -11,7 +11,7 @@ set -euo pipefail
 cd "$SLURM_SUBMIT_DIR";export LAB_DEVICE=cpu LAB_NEEDS_MPI=0
 source scripts/site.sh
 out="results/profile-$SLURM_JOB_ID";mkdir -p "$out"
-command -v gprof
+command -v gprof >/dev/null || { echo 'SKIPPED_PROFILE: gprof unavailable'; exit 0; }
 # Use the naive version so its explicit copying is visible in a sampling profile.
 gcc -O0 -g -pg src/heat_naive.c -o "$out/heat_profile"
 cd "$out"
