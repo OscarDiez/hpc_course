@@ -1,23 +1,29 @@
-# Checks for the modules and Apptainer practical
+# Validation of the direct modules/Apptainer practical
 
-The notebook schema, code-cell Python syntax, generated Bash syntax, source/configuration parity and all nine matching SSH/notebook command blocks passed.
+## Observed SciTech results
 
-All notebook code cells executed through IPython, including writefile cells, in three fresh local scenarios:
+The instructor-provided M5S3 HTML export (11) confirms:
 
-| Scenario | Actual payload work | Orchestration tested |
-|---|---|---|
-| Compatible CLI test double | GCC compiled the real C program; its actual sum was 5000050000. Host CPU PyTorch 2.8.0+cpu trained A, B, C and the mounted-path repetition. A/B and A/bind records matched, C changed and numerical assertions passed. A real host file was written/read. | Mock Lmod, Slurm and Apptainer CLI; command arguments, cleanenv/bind construction, status handling and final table |
-| Missing image | Real C calculation passed. No training process was launched. | Container SKIPPED; repeat/change/bind SKIPPED; final summary completed |
-| Incompatible runtime | Real C calculation passed. The deliberately incompatible CLI returned failure. | Container FAILED; dependent training/change/bind SKIPPED; final summary completed |
+- foss/2023b selected GCC 13.2.0 and OpenMPI 4.1.6. Native job 25223 printed the correct sum 5000050000.
+- The m5s3_class collection saved, purged and restored; compiler paths matched.
+- HDF5/1.14.3-gompi-2023b loaded and h5pcc was found.
+- Apptainer 1.5.4 opened the shared 4.0 GiB PyTorch image. Job 25224 imported PyTorch 2.8.0+cu128 using /opt/conda/bin/python3. CUDA was unavailable, which is acceptable for the CPU-only exercise.
+- Jobs 25225 and 25226 produced identical A/B JSON records: target slope 3, learned slope 2.996894, intercept 1.999999, mean absolute error 0.03219.
+- Job 25227 used target slope 4 and returned learned slope 3.996894 with intercept 1.999999 and error 0.03219.
+- The previous bind experiment was queued as job 25228 when the export ended. It is not evidence of a successful bind.
 
-The runner was tested with inherited Jupyter job ID 25204 and a one-core setting. Its child requests lost those allocation limits, while the parent environment remained unchanged. Test allocation arguments requested CPUs only; no GPU or package/image download command is present in the student workflow.
+## Current local checks
 
-These are local author checks, not SciTech execution. Lmod save/restore, Slurm allocation, Apptainer isolation, the shared SIF, image-specific interpreter and actual filesystem bind semantics are not validated by a test double. The local PyTorch build was CPU-only; it is not claimed to be the shared cluster image. No cluster timing or container result is prefilled in the notebook.
+The student route now uses direct commands, without status-file gates or conditional Bash branches. All notebook code executed through IPython with actual GCC and host CPU PyTorch 2.8.0+cpu payloads, using explicit local test doubles for module, srun and apptainer commands.
 
-Run the local orchestration test in an author environment with nbformat, IPython, GCC and CPU PyTorch:
+The local compatible case verified the known C sum, module-path comparison, model assertions, identical A/B records, changed C and the host note. The two-node test double checked command arguments and final distinct-hostname parsing; it did not run on two machines. Missing-image and incompatible-runtime cases stopped at the actual failed command rather than reporting a fabricated success. No GPU was requested.
+
+Schema, Python/Bash syntax, source parity, readable line continuations and matching SSH/Jupyter commands were checked. Run the author test with nbformat, IPython, GCC, an MPI C compiler and CPU PyTorch available:
 
 ```bash
 python3 basic_lab/tests/check_basics.py
 ```
 
-For acceptance on SciTech, use a fresh notebook copy, run in order, inspect actual module paths, CPU allocations, PyTorch/image information, all checkpoint statuses and the final table. Preserve a genuine FAILED or SKIPPED status. The user must see actual native and container outputs before the container route is treated as demonstrated.
+The new bind-note program and two-node command require actual SciTech execution. A test double does not validate Apptainer isolation, filesystem mounts, distributed placement or hardware availability. No new cluster results or timings are prefilled in the notebook.
+
+The final MPI source compiled and ran with real MPICH 5.0.2 in two local processes; both received sum 3. This is not a two-server or container test. The full notebook CLI harness also covers salloc/mpirun command construction and final parsing using labelled test doubles. The host-MPI/CVMFS bind, Open MPI runtime compatibility and network launch on SciTech remain unverified. The main results table is produced before this new MPI exercise.
