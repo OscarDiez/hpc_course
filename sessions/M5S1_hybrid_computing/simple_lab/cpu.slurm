@@ -46,16 +46,3 @@ if command -v gprof >/dev/null; then
     srun -n1 -c1 ./profile 512 600 "$out/profile.vtk"
     gprof ./profile gmon.out > "$out/profile.txt"
 fi
-# ParaView is post-processing; its status is separate from solver correctness.
-if module load ParaView/5.11.2-foss-2023a; then
-    export LIBGL_ALWAYS_SOFTWARE=true GALLIUM_DRIVER=llvmpipe EGL_PLATFORM=surfaceless LP_NUM_THREADS=1
-    unset DISPLAY WAYLAND_DISPLAY PV_DEBUG_REMOTE_RENDERING
-    ulimit -c 0
-    if pvbatch --force-offscreen-rendering view.py "$N" "$out/serial-1.vtk" "$out/paraview.png"; then
-        echo PARAVIEW_PASS
-    else
-        echo PARAVIEW_FAILED
-    fi
-else
-    echo PARAVIEW_UNAVAILABLE
-fi

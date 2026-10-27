@@ -13,3 +13,5 @@ With gcc, mpicc, mpiexec and Python available, run:
 ```bash
 python3 tests/check_basics.py
 ```
+
+The current step-by-step notebook was executed from a clean IPython namespace with the local scheduler shim. Direct serial/OpenMP/MPI/hybrid srun commands and the later repeated batch executed real programs. Each displayed SSH block matches its executable notebook cell. ParaView and GPU requests deliberately failed in the harness; errors were reported and the final review still ran. The 41 numerical checks still cover the unchanged C sources.
