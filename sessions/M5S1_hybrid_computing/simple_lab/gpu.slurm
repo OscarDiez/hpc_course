@@ -9,15 +9,14 @@
 #SBATCH --time=00:06:00
 #SBATCH --output=gpu-%j.out
 set -euo pipefail
-cd "$SLURM_SUBMIT_DIR"
-printf "gpu-%s.out\n" "$SLURM_JOB_ID" > latest_gpu_log.txt
+# Slurm starts this script in the submitted/requested working folder.
 N=${N:-128}; STEPS=${STEPS:-150}
 module load nvhpc/25.7
 module list
 nvidia-smi
 nvc -O2 -acc -gpu=ccnative -Minfo=accel heat_openacc.c -o openacc
 # Make a CPU reference with exactly the same inputs in this job.
-gcc -O2 heat_serial.c -o serial
+# Reuse the CPU executable compiled in the serial step.
 out="$PWD/results/gpu-$SLURM_JOB_ID"
 mkdir -p "$out"
 ./serial "$N" "$STEPS" "$out/reference.vtk"

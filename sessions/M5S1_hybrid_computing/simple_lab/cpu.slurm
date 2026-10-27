@@ -13,11 +13,7 @@ printf "cpu-%s.out\n" "$SLURM_JOB_ID" > latest_cpu_log.txt
 N=${N:-128}; STEPS=${STEPS:-150}
 module load OpenMPI/4.1.5-GCC-12.3.0
 module list
-# Four files, four executables. No compile-time switches choose the algorithm.
-gcc -O2 heat_serial.c -o serial
-gcc -O2 -fopenmp heat_openmp.c -o openmp
-mpicc -O2 heat_mpi.c -o mpi
-mpicc -O2 -fopenmp heat_hybrid.c -o hybrid
+# Use the executables compiled in the earlier steps.
 export OMP_NUM_THREADS=2 OMP_DYNAMIC=FALSE
 export OMP_PLACES=cores OMP_PROC_BIND=close
 # Save each submission in a different results folder.
