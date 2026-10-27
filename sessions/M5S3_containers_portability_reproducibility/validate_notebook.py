@@ -1,7 +1,7 @@
 import ast,contextlib,importlib.util,io,json,os,shutil,subprocess,sys,tempfile
 from pathlib import Path
 BASE=Path(__file__).resolve().parent
-nb=json.loads((BASE/'M5S3_containers_portability_reproducibility.ipynb').read_text())
+nb=json.loads((BASE/'M5S3_containers_portability_reproducibility_extended.ipynb').read_text())
 assert len({c['id'] for c in nb['cells']})==len(nb['cells'])
 code=[c for c in nb['cells'] if c['cell_type']=='code']
 for c in code:ast.parse(c['source']);assert c['execution_count'] is None and not c['outputs']
