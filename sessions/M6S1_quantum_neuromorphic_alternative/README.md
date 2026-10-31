@@ -1,3 +1,5 @@
+> **Supplementary broad-scope material.** For the revised neuromorphic-only M6S1 lesson, use [the simple session notebook](../M6S1_neuromorphic/). The notebook and slide plan below cover a wider scope and are retained as reference, not as the current lesson plan.
+
 # M6S1 · Quantum, neuromorphic and alternative computing paradigms
 
 Syllabus Session 26, BCSAI, IE University, 2026–27. This follows Module 5 reproducible workflows and leads to Session 27 exascale/post-exascale computing.
