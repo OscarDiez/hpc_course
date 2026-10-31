@@ -6,6 +6,7 @@ Syllabus Session 26, BCSAI, IE University, 2026–27. This follows Module 5 repr
 - [Raw notebook for JupyterLab](https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m6s1-alternative-paradigms-2026/sessions/M6S1_quantum_neuromorphic_alternative/M6S1_quantum_neuromorphic_alternative.ipynb)
 - [C and execution files](../../session_demos/26_alternative_paradigms/)
 - [Validation report](VALIDATION.md)
+- [Complete 29-slide restructuring plan and implementation checklist](SLIDE_PLAN.md)
 
 Open the raw link with **File → Open from URL** in JupyterLab. Save a personal copy. Run cells in order with Python 3.9+. No packages, images, accounts or datasets are downloaded. The source files are embedded, so a repository checkout is unnecessary. Matplotlib is optional; printed tables work without it.
 
