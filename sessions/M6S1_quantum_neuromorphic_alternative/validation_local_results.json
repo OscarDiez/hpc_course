@@ -1,0 +1,154 @@
+{
+  "settings": {
+    "event_period": 50,
+    "threshold": 1.0,
+    "bits": 3,
+    "phase": 0.0,
+    "overhead_ms": 5.0,
+    "openmp": false
+  },
+  "source_sha256": "b9514d5b1252e588a3ecabc2a13caee711d891baddee37e077e0513b7931fdf2",
+  "provenance": {
+    "host": "a9e396123eda",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39",
+    "python": "3.12.14",
+    "slurm_job_id": null,
+    "context": "LOCAL_CPU",
+    "flags": "-O2 -std=c11 -Wall -Wextra -Werror -lm",
+    "compiler": "gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0"
+  },
+  "experiments": {
+    "E1": {
+      "status": "PASS",
+      "evidence": "CPU_SIMULATION",
+      "rows": [
+        {
+          "period": 50.0,
+          "frames": 1000.0,
+          "channels": 16.0,
+          "events": 20.0,
+          "dense_updates": 16000.0,
+          "event_updates": 20.0,
+          "checksum": 136500.0
+        },
+        {
+          "period": 100.0,
+          "frames": 1000.0,
+          "channels": 16.0,
+          "events": 10.0,
+          "dense_updates": 16000.0,
+          "event_updates": 10.0,
+          "checksum": 43600.0
+        }
+      ]
+    },
+    "E2": {
+      "status": "PASS",
+      "evidence": "CPU_SIMULATION",
+      "rows": [
+        {
+          "threshold": 1.0,
+          "spikes": 2.0,
+          "final_v": 0.54
+        },
+        {
+          "threshold": 1.3,
+          "spikes": 1.0,
+          "final_v": 0.54
+        }
+      ]
+    },
+    "E3": {
+      "status": "PASS",
+      "evidence": "CPU_SIMULATION",
+      "rows": [
+        {
+          "bits": 3.0,
+          "max_error": 0.024369747899
+        },
+        {
+          "bits": 8.0,
+          "max_error": 0.0
+        }
+      ]
+    },
+    "E4": {
+      "status": "PASS",
+      "evidence": "CPU_SIMULATION",
+      "rows": [
+        {
+          "phi": 0.0,
+          "p0": 1.0,
+          "p1": 0.0
+        },
+        {
+          "phi": 1.570796326795,
+          "p0": 0.5,
+          "p1": 0.5
+        },
+        {
+          "phi": 3.14159265359,
+          "p0": 0.0,
+          "p1": 1.0
+        }
+      ]
+    },
+    "E5": {
+      "status": "PASS",
+      "evidence": "ILLUSTRATIVE_MODEL_NOT_MEASUREMENT",
+      "rows": [
+        {
+          "overhead_ms": 5.0,
+          "hybrid_ms": 33.0,
+          "speedup": 3.0303030303030303
+        },
+        {
+          "overhead_ms": 80.0,
+          "hybrid_ms": 108.0,
+          "speedup": 0.9259259259259259
+        }
+      ]
+    }
+  },
+  "optional": {
+    "OpenMP": {
+      "status": "NOT RUN",
+      "reason": "Set openmp=True and provide two allocated CPUs to request this optional check."
+    },
+    "GPU": {
+      "status": "SKIPPED",
+      "reason": "No hardware execution requested in this CPU concept lab."
+    },
+    "MPI": {
+      "status": "SKIPPED",
+      "reason": "No hardware execution requested in this CPU concept lab."
+    },
+    "QPU": {
+      "status": "SKIPPED",
+      "reason": "No hardware execution requested in this CPU concept lab."
+    },
+    "NEUROMORPHIC": {
+      "status": "SKIPPED",
+      "reason": "No hardware execution requested in this CPU concept lab."
+    },
+    "PHOTONIC": {
+      "status": "SKIPPED",
+      "reason": "No hardware execution requested in this CPU concept lab."
+    },
+    "RESISTIVE_ARRAY": {
+      "status": "SKIPPED",
+      "reason": "No hardware execution requested in this CPU concept lab."
+    }
+  },
+  "raw": {
+    "events:50": "PASS: all_event_steps_equal\nPASS: event_checksums_equal\nRESULT events period=50 frames=1000 channels=16 events=20 dense_updates=16000 event_updates=20 checksum=136500\n",
+    "events:100": "PASS: all_event_steps_equal\nPASS: event_checksums_equal\nRESULT events period=100 frames=1000 channels=16 events=10 dense_updates=16000 event_updates=10 checksum=43600\n",
+    "lif:1.0": "TRACE step before_reset spike after_reset\nPASS: lif_state_valid\nTRACE 0 0.300000000 0 0.300000000\nPASS: lif_state_valid\nTRACE 1 0.540000000 0 0.540000000\nPASS: lif_state_valid\nTRACE 2 0.732000000 0 0.732000000\nPASS: lif_state_valid\nTRACE 3 0.885600000 0 0.885600000\nPASS: lif_state_valid\nTRACE 4 1.008480000 1 0.000000000\nPASS: lif_state_valid\nTRACE 5 0.300000000 0 0.300000000\nPASS: lif_state_valid\nTRACE 6 0.540000000 0 0.540000000\nPASS: lif_state_valid\nTRACE 7 0.732000000 0 0.732000000\nPASS: lif_state_valid\nTRACE 8 0.885600000 0 0.885600000\nPASS: lif_state_valid\nTRACE 9 1.008480000 1 0.000000000\nPASS: lif_state_valid\nTRACE 10 0.300000000 0 0.300000000\nPASS: lif_state_valid\nTRACE 11 0.540000000 0 0.540000000\nRESULT lif threshold=1.000000000 spikes=2 final_v=0.540000000\n",
+    "lif:1.3": "TRACE step before_reset spike after_reset\nPASS: lif_state_valid\nTRACE 0 0.300000000 0 0.300000000\nPASS: lif_state_valid\nTRACE 1 0.540000000 0 0.540000000\nPASS: lif_state_valid\nTRACE 2 0.732000000 0 0.732000000\nPASS: lif_state_valid\nTRACE 3 0.885600000 0 0.885600000\nPASS: lif_state_valid\nTRACE 4 1.008480000 0 1.008480000\nPASS: lif_state_valid\nTRACE 5 1.106784000 0 1.106784000\nPASS: lif_state_valid\nTRACE 6 1.185427200 0 1.185427200\nPASS: lif_state_valid\nTRACE 7 1.248341760 0 1.248341760\nPASS: lif_state_valid\nTRACE 8 1.298673408 0 1.298673408\nPASS: lif_state_valid\nTRACE 9 1.338938726 1 0.000000000\nPASS: lif_state_valid\nTRACE 10 0.300000000 0 0.300000000\nPASS: lif_state_valid\nTRACE 11 0.540000000 0 0.540000000\nRESULT lif threshold=1.300000000 spikes=1 final_v=0.540000000\n",
+    "matvec:3": "MATRIX row reference quantized abs_error\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 0 0.176470588235 0.185714285714 0.009243697479\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 1 0.352941176471 0.328571428571 0.024369747899\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 2 0.529411764706 0.528571428571 0.000840336134\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 3 0.705882352941 0.728571428571 0.022689075630\nRESULT matvec bits=3 max_error=0.024369747899\n",
+    "matvec:8": "MATRIX row reference quantized abs_error\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 0 0.176470588235 0.176470588235 0.000000000000\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 1 0.352941176471 0.352941176471 0.000000000000\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 2 0.529411764706 0.529411764706 0.000000000000\nPASS: matvec_reference\nPASS: matvec_quantization_bound\nMATRIX 3 0.705882352941 0.705882352941 0.000000000000\nRESULT matvec bits=8 max_error=0.000000000000\n",
+    "quantum:0": "PASS: quantum_normalization\nPASS: quantum_analytic_probability\nRESULT quantum phi=0.000000000000 p0=1.000000000000 p1=0.000000000000\n",
+    "quantum:1.5707963267948966": "PASS: quantum_normalization\nPASS: quantum_analytic_probability\nRESULT quantum phi=1.570796326795 p0=0.500000000000 p1=0.500000000000\n",
+    "quantum:3.141592653589793": "PASS: quantum_normalization\nPASS: quantum_analytic_probability\nRESULT quantum phi=3.141592653590 p0=0.000000000000 p1=1.000000000000\n"
+  }
+}
