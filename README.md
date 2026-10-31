@@ -149,3 +149,13 @@ Current teaching notebooks are organized by **Module → Session** using the can
   - [Interactive notebook](sessions/M5S3_containers_portability_reproducibility/M5S3_containers_portability_reproducibility.ipynb)
   - Raw URL for JupyterLab **File -> Open from URL...**:
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M5S3_containers_portability_reproducibility/M5S3_containers_portability_reproducibility.ipynb`
+
+### Module 6
+
+- **M6.S1 - Quantum, neuromorphic and alternative computing paradigms (Session 26)**
+  - [Session guide](sessions/M6S1_quantum_neuromorphic_alternative/)
+  - [Notebook](sessions/M6S1_quantum_neuromorphic_alternative/M6S1_quantum_neuromorphic_alternative.ipynb)
+  - Raw URL for JupyterLab **File -> Open from URL**:
+    `https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m6s1-alternative-paradigms-2026/sessions/M6S1_quantum_neuromorphic_alternative/M6S1_quantum_neuromorphic_alternative.ipynb`
+  - Local CPU simulations validated; SciTech execution remains NOT RUN.
+
