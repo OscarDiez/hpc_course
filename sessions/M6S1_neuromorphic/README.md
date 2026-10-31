@@ -5,6 +5,7 @@ Use this **one-session notebook**, following the revised teaching scope. About 3
 - [Notebook](M6S1_neuromorphic.ipynb)
 - [Raw notebook — paste into JupyterLab File → Open from URL](https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m6s1-alternative-paradigms-2026/sessions/M6S1_neuromorphic/M6S1_neuromorphic.ipynb)
 - [Validation](VALIDATION.md)
+- [Updated neuromorphic-only slide plan](SLIDE_PLAN.md) — 27 slides, 80 minutes, five MCQs and exact original-slide references.
 
 ## What students do
 
