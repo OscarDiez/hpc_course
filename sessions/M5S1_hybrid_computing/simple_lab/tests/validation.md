@@ -1,0 +1,27 @@
+# Local checks for M5S1 basics
+
+41 checks passed against an independent Python reference in the test code: six grid/step cases, serial, OpenMP, MPI/hybrid with one to three ranks for compatible layouts, correct VTK dimensions/values, ownership labels and rejection of an invalid layout. The student notebook itself contains no Python heat simulation or numerical validator.
+
+All notebook code cells executed with IPython, including the writefile magics. A local scheduler shim ran the actual CPU batch commands, GCC/OpenMP/MPICH programs, field comparisons and gprof. The shim deliberately failed the GPU job and made ParaView unavailable. The notebook displayed those outcomes and did not fabricate an image.
+
+Local environment: GCC 13.3, MPICH 5.0.2. Container-only MPI settings were `MPIR_CVAR_CH4_NETMOD=ofi FI_PROVIDER=tcp MPIR_CVAR_CH4_SHM=none MPIR_CVAR_CH4_CMA_ENABLE=0`, because CMA access is restricted. These settings are not student or SciTech instructions.
+
+OpenACC source compiled with GCC for syntax checking. This is not NVIDIA execution. No SciTech job or actual ParaView render was run for this rewrite. Local timing values are not presented as cluster measurements.
+
+With gcc, mpicc, mpiexec and Python available, run:
+
+```bash
+python3 tests/check_basics.py
+```
+
+The current step-by-step notebook was executed from a clean IPython namespace with the local scheduler shim. Direct serial/OpenMP/MPI/hybrid srun commands and the later repeated batch executed real programs. Each displayed SSH block matches its executable notebook cell. ParaView and GPU requests deliberately failed in the harness; errors were reported and the final review still ran. The 41 numerical checks still cover the unchanged C sources.
+
+The current revision also checks immediate per-source compilation and reuses those executables in the repeated batch. Local GPU allocation tests cover exit 99 (skip), exit 2 (failure), and exit 0 (success path). A clean full notebook run used real CPU programs and a local scheduler shim that rejected the GPU allocation with exit 99; the GPU step skipped and final review executed. No GPU job was queued in this harness. Actual SciTech immediate allocation remains unverified.
+
+The main notebook now omits the visualisation section, its executable calls, image-display cells and view.py. Solver logic and comparison commands are unchanged. Notebook schema, code syntax, source parity and absence of rendering references were checked after removal.
+
+The final summary was exercised during a complete local notebook run: all four direct CPU fields passed, the known first-step row matched, the repeated CPU batch passed, and the mock unavailable GPU showed SKIPPED. The summary uses recorded output rather than illustrative timings. GPU status is reset at the beginning to prevent a prior run being shown as the current result.
+
+Regression for the user export showing job 25204: the notebook wrapper is tested with inherited job IDs, one-core resource settings and TRES/memory variables. The child receives no parent allocation limits; Slurm configuration/account/QOS remain, and the notebook parent environment is unchanged. A full local notebook run also used a scheduler shim that rejects a four-core hybrid step if the inherited notebook job ID survives. All real CPU stages and comparisons passed, and the GPU skip branch continued to the final summary. Actual fresh allocations on SciTech still require confirmation.
+
+The readability revision passed all 41 local numerical/layout checks against the independent reference. GCC compiled the serial/OpenMP/MPI/hybrid variants with warnings enabled and OpenACC for syntax checking. Grid updates, output format and command interfaces are preserved. Notebook source cells match the standalone C files. NVIDIA execution is still unverified.
