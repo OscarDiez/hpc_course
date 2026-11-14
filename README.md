@@ -149,3 +149,12 @@ Current teaching notebooks are organized by **Module → Session** using the can
   - [Interactive notebook](sessions/M5S3_containers_portability_reproducibility/M5S3_containers_portability_reproducibility.ipynb)
   - Raw URL for JupyterLab **File -> Open from URL...**:
     `https://raw.githubusercontent.com/OscarDiez/hpc_course/main/sessions/M5S3_containers_portability_reproducibility/M5S3_containers_portability_reproducibility.ipynb`
+
+### Module 6
+
+- **M6.S1 — Neuromorphic computing: a first spiking neuron**
+  - [Session guide](sessions/M6S1_neuromorphic/)
+  - [Notebook](sessions/M6S1_neuromorphic/M6S1_neuromorphic.ipynb)
+  - [Raw URL for JupyterLab](https://raw.githubusercontent.com/OscarDiez/hpc_course/teaching/m6s1-alternative-paradigms-2026/sessions/M6S1_neuromorphic/M6S1_neuromorphic.ipynb)
+  - Three simple C exercises; locally validated. SciTech execution: NOT RUN.
+  - Earlier broad alternative-paradigms materials remain supplementary; use the neuromorphic notebook above for this session.

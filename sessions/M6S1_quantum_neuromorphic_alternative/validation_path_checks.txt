@@ -1,0 +1,9 @@
+PASS real CPU parameter case {}
+PASS real CPU parameter case {'event_period': 1, 'threshold': 0.1, 'bits': 2, 'phase': 6.283185307179586, 'overhead_ms': 0}
+PASS real CPU parameter case {'event_period': 1000, 'threshold': 2, 'bits': 12, 'phase': 1, 'overhead_ms': 1000}
+PASS real CPU parameter case {'threshold': 1.6, 'openmp': True}
+PASS six invalid C invocations rejected
+PASS missing compiler reports SKIPPED, model still available
+PASS attempted compilation failure reports FAIL
+PASS mocked scheduler: memory cleanup, saved-job reuse, absent results NOT RUN
+Scheduler checks use mocks, not actual Slurm.
